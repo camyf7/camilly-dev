@@ -188,8 +188,6 @@ function Notebook3D() {
   }, [])
 
   // ── Core key action — single source of truth ──────────────────────────────
-  // Called by: (a) visual key onPointerDown, (b) physical keyboard listener
-  // Never called twice for the same event.
   const handleKeyAction = useCallback((label: string) => {
     // Flash visual key
     setPressedKey(label)
@@ -226,10 +224,9 @@ function Notebook3D() {
     setTermLines(p => [...p.slice(-6), cmds[Math.floor(Math.random() * cmds.length)]])
   }, [handleNameSubmit, startTyping])
 
-  // ── Physical keyboard — fires handleKeyAction, NOT via visual key click ───
+  // ── Physical keyboard ───────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // If user is typing in the visible mobile input, let it handle itself
       if (document.activeElement === mobileInputRef.current) return
 
       if (phaseRef.current === 'ask-name') {
@@ -238,7 +235,6 @@ function Notebook3D() {
         if (e.key.length === 1) handleKeyAction(e.key.toUpperCase())
         return
       }
-      // ready: trigger random key effect
       const allLabels = KEY_ROWS.flatMap(r => r.keys.map(k => k.label)).filter(Boolean)
       handleKeyAction(allLabels[Math.floor(Math.random() * allLabels.length)])
     }
@@ -247,17 +243,16 @@ function Notebook3D() {
   }, [handleNameSubmit, handleKeyAction])
 
   // ── Key component ─────────────────────────────────────────────────────────
-  // onPointerDown + e.preventDefault() prevents the ghost onClick on touch.
-  // No onClick handler at all on the key div.
   const Key = ({ label, w }: { label: string; w: number }) => {
     const active = pressedKey === label && label !== ''
     return (
       <div
         onPointerDown={(e) => {
-          e.preventDefault()   // <-- kills ghost click on touch
-          e.stopPropagation()  // <-- don't bubble to drag handler
+          e.preventDefault()
+          e.stopPropagation()
           if (label) handleKeyAction(label)
         }}
+        className="key-button"
         style={{
           flex: w,
           height: '100%',
@@ -266,7 +261,8 @@ function Notebook3D() {
           border: '0.5px solid rgba(168,85,247,0.1)',
           cursor: label ? 'pointer' : 'default',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '4px', color: 'rgba(200,180,255,0.45)', fontFamily: 'monospace',
+          fontSize: 'clamp(3px, 1.2vw, 5px)',
+          color: 'rgba(200,180,255,0.45)', fontFamily: 'monospace',
           userSelect: 'none', WebkitUserSelect: 'none',
           transform: active ? 'scaleY(0.72)' : 'scaleY(1)',
           boxShadow: active ? '0 0 7px rgba(168,85,247,0.5)' : 'none',
@@ -281,41 +277,39 @@ function Notebook3D() {
   }
 
   return (
-    <div className="relative w-full flex flex-col items-center select-none" style={{ minHeight: '400px' }}>
+    <div className="relative w-full flex flex-col items-center select-none px-2 sm:px-4" style={{ minHeight: 'min(400px, 70vw)' }}>
 
-      {/* ── Floating tech chips ── */}
+      {/* ── Floating tech chips responsivos ── */}
       {CHIPS.map((chip, i) => (
         <motion.div
           key={chip.label}
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1 + i * 0.18, duration: 0.38, ease: [0.23,1,0.32,1] }}
+          className="hidden sm:block"
           style={{
             position: 'absolute',
-            [chip.side === 'left' ? 'left' : 'right']: '-1%',
+            [chip.side === 'left' ? 'left' : 'right']: 'max(-10px, -2%)',
             top: `${chip.yPct}%`, zIndex: 20, pointerEvents: 'none',
           }}
         >
           <motion.div
             animate={{ y: [0, -7, 0] }}
             transition={{ duration: 3.2 + i * 0.5, repeat: Infinity, ease: 'easeInOut' }}
+            className="whitespace-nowrap"
             style={{
               background: 'rgba(8,6,20,0.9)',
               border: `1px solid ${chip.color}25`,
               borderRadius: '8px', padding: '4px 10px',
-              fontSize: '10px', fontFamily: 'monospace',
-              color: chip.color, whiteSpace: 'nowrap',
+              fontSize: 'clamp(8px, 2vw, 10px)',
+              fontFamily: 'monospace',
+              color: chip.color,
             }}
           >{chip.label}</motion.div>
         </motion.div>
       ))}
 
-      {/* ── 3D scene ── */}
-      {/*
-        Design at 440px reference. A CSS scale() makes it fit smaller screens.
-        The scale wrapper sits inside an aspect-ratio box so the parent height
-        adjusts correctly and there's no overflow.
-      */}
+      {/* ── 3D scene responsiva ── */}
       <div
         className="w-full flex justify-center"
         style={{ perspective: '1000px', touchAction: 'none' }}
@@ -327,12 +321,11 @@ function Notebook3D() {
         onTouchMove={e => { moveDrag(e.touches[0].clientX, e.touches[0].clientY) }}
         onTouchEnd={endDrag}
       >
-        {/* Outer aspect-ratio shell */}
-        <div className="notebook-shell">
-          {/* Inner 440px design, scaled via CSS */}
-          <div className="notebook-inner">
+        <div className="notebook-shell w-full max-w-[440px] relative">
+          <div className="notebook-inner w-[440px] h-[420px] transform origin-top-center mx-auto">
             <div
               ref={laptopRef}
+              className="relative"
               style={{
                 width: '440px', height: '420px',
                 position: 'relative', transformStyle: 'preserve-3d',
@@ -383,15 +376,15 @@ function Notebook3D() {
                       {['#ff5f57','#febc2e','#28c840'].map((c,i)=>(
                         <div key={i} style={{width:7,height:7,borderRadius:'50%',background:c}}/>
                       ))}
-                      <span style={{fontSize:'10px',color:'rgba(168,85,247,0.6)',fontFamily:'monospace',marginLeft:'8px'}}>
+                      <span style={{fontSize:'clamp(8px, 2.5vw, 10px)',color:'rgba(168,85,247,0.6)',fontFamily:'monospace',marginLeft:'8px'}}>
                         {phase==='boot'?'boot.sh':phase==='ask-name'?'root@camilly ~':`${userName}@camilly ~`}
                       </span>
                     </div>
 
                     {/* Editor */}
                     <div style={{flex:1,display:'flex',overflow:'hidden'}}>
-                      {/* Sidebar */}
-                      <div style={{width:'28px',background:'rgba(0,0,0,0.28)',borderRight:'1px solid rgba(255,255,255,0.04)',display:'flex',flexDirection:'column',alignItems:'center',padding:'8px 0',gap:'7px'}}>
+                      {/* Sidebar - esconder em telas muito pequenas */}
+                      <div style={{width:'28px',background:'rgba(0,0,0,0.28)',borderRight:'1px solid rgba(255,255,255,0.04)',display:'flex',flexDirection:'column',alignItems:'center',padding:'8px 0',gap:'7px'}} className="hidden sm:flex">
                         {['⌘','⊞','⊙','⚙'].map((ic,i)=>(
                           <div key={i} style={{width:'15px',height:'15px',borderRadius:'3px',background:i===0?'rgba(168,85,247,0.4)':'rgba(255,255,255,0.07)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'8px',color:i===0?'#d8a4ff':'rgba(255,255,255,0.3)'}}>{ic}</div>
                         ))}
@@ -413,7 +406,7 @@ function Notebook3D() {
                           padding:'6px 10px',
                           flex:phase!=='ready'?1:'none',
                           height:phase==='ready'?'82px':'auto',
-                          overflow:'hidden',fontFamily:'monospace',fontSize:'9px',
+                          overflow:'hidden',fontFamily:'monospace',fontSize:'clamp(7px, 2vw, 9px)',
                           display:'flex',flexDirection:'column',justifyContent:'flex-end',
                         }}>
                           {termLines.slice(-8).map((line, i) => {
@@ -434,6 +427,7 @@ function Notebook3D() {
           : 'rgba(200,200,220,0.7)',
         lineHeight: '1.5',
         whiteSpace: 'pre-wrap',
+        fontSize: 'clamp(7px, 2vw, 9px)',
       }}
     >
       {safeLine}
@@ -442,14 +436,14 @@ function Notebook3D() {
 })}
                           {phase==='ask-name'&&(
                             <div style={{display:'flex',alignItems:'center',gap:'3px',marginTop:'2px'}}>
-                              <span style={{color:'#a855f7'}}>{'> '}</span>
-                              <span style={{color:'#e2e8f0'}}>{promptInput}</span>
+                              <span style={{color:'#a855f7',fontSize:'clamp(7px, 2vw, 9px)'}}>{'> '}</span>
+                              <span style={{color:'#e2e8f0',fontSize:'clamp(7px, 2vw, 9px)'}}>{promptInput}</span>
                               <motion.span animate={{opacity:[1,0,1]}} transition={{duration:0.85,repeat:Infinity}} style={{display:'inline-block',width:'5px',height:'10px',background:'#a855f7',borderRadius:'1px'}}/>
                             </div>
                           )}
                           {phase==='ready'&&(
-                            <div style={{display:'flex',alignItems:'center',marginTop:'2px'}}>
-                              <span style={{color:'#a855f7',fontFamily:'monospace',fontSize:'9px'}}>{`${userName}@camilly:~$ `}</span>
+                            <div style={{display:'flex',alignItems:'center',marginTop:'2px',flexWrap:'wrap'}}>
+                              <span style={{color:'#a855f7',fontFamily:'monospace',fontSize:'clamp(7px, 2vw, 9px)'}}>{`${userName}@camilly:~$ `}</span>
                               <motion.span animate={{opacity:[1,0,1]}} transition={{duration:0.85,repeat:Infinity}} style={{display:'inline-block',width:'5px',height:'10px',background:'#a855f7',borderRadius:'1px',marginLeft:'2px'}}/>
                             </div>
                           )}
@@ -488,19 +482,19 @@ function Notebook3D() {
 
                 {/* Base body */}
                 <div style={{width:'440px',height:'116px',background:'linear-gradient(180deg,#131228 0%,#0d0b1a 100%)',border:'1px solid rgba(120,80,240,0.13)',borderTop:'none',borderRadius:'0 0 10px 10px',position:'relative'}}>
-                  {/* Vents */}
-                  <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'4px'}}>
+                  {/* Vents - responsivo */}
+                  <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'clamp(2px, 1vw, 4px)'}}>
                     {Array.from({length:7}).map((_,i)=>(
-                      <div key={i} style={{width:'22px',height:'3px',borderRadius:'1.5px',background:'rgba(100,80,200,0.14)'}}/>
+                      <div key={i} style={{width:'clamp(16px, 5vw, 22px)',height:'3px',borderRadius:'1.5px',background:'rgba(100,80,200,0.14)'}}/>
                     ))}
                   </div>
                   {/* Trackpad */}
                   <div
                     onPointerDown={e=>{e.preventDefault();e.stopPropagation();handleKeyAction('↵')}}
-                    style={{width:'120px',height:'70px',borderRadius:'6px',background:'rgba(255,255,255,0.025)',border:'0.5px solid rgba(168,85,247,0.1)',position:'absolute',bottom:'20px',left:'50%',transform:'translateX(-50%)',cursor:'pointer',touchAction:'none'}}
+                    style={{width:'clamp(80px, 27vw, 120px)',height:'clamp(46px, 16vw, 70px)',borderRadius:'6px',background:'rgba(255,255,255,0.025)',border:'0.5px solid rgba(168,85,247,0.1)',position:'absolute',bottom:'20px',left:'50%',transform:'translateX(-50%)',cursor:'pointer',touchAction:'none'}}
                   />
                   {/* Brand */}
-                  <div style={{position:'absolute',bottom:'8px',left:'50%',transform:'translateX(-50%)',fontSize:'9px',color:'rgba(168,85,247,0.28)',letterSpacing:'4px',fontFamily:'monospace',whiteSpace:'nowrap'}}>CAMILLY</div>
+                  <div style={{position:'absolute',bottom:'8px',left:'50%',transform:'translateX(-50%)',fontSize:'clamp(6px, 2vw, 9px)',color:'rgba(168,85,247,0.28)',letterSpacing:'clamp(2px, 1vw, 4px)',fontFamily:'monospace',whiteSpace:'nowrap'}}>CAMILLY</div>
                 </div>
               </div>
             </div>
@@ -508,20 +502,37 @@ function Notebook3D() {
         </div>
       </div>
 
-      {/* Ground shadow */}
-      <div style={{width:'55%',maxWidth:'280px',height:'16px',background:'radial-gradient(ellipse at center,rgba(100,60,220,0.18) 0%,transparent 70%)',borderRadius:'50%',marginTop:'2px'}}/>
+      {/* Ground shadow responsiva */}
+      <div style={{width:'min(55%, 280px)',height:'16px',background:'radial-gradient(ellipse at center,rgba(100,60,220,0.18) 0%,transparent 70%)',borderRadius:'50%',marginTop:'2px'}}/>
 
-      {/* Status pill */}
+      {/* Status pill responsivo */}
       <motion.div
         initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:1.3,duration:0.5}}
-        style={{background:'rgba(8,6,20,0.88)',border:'1px solid rgba(168,85,247,0.16)',borderRadius:'999px',padding:'6px 16px',display:'flex',alignItems:'center',gap:'8px',fontSize:'11px',fontFamily:'monospace',color:'rgba(255,255,255,0.48)',marginTop:'12px',whiteSpace:'nowrap',maxWidth:'95%',overflow:'hidden',flexShrink:0}}
+        className="responsive-pill"
+        style={{
+          background:'rgba(8,6,20,0.88)',
+          border:'1px solid rgba(168,85,247,0.16)',
+          borderRadius:'999px',
+          padding:'clamp(4px, 1.5vw, 6px) clamp(12px, 4vw, 16px)',
+          display:'flex',
+          alignItems:'center',
+          gap:'clamp(4px, 2vw, 8px)',
+          fontSize:'clamp(9px, 3vw, 11px)',
+          fontFamily:'monospace',
+          color:'rgba(255,255,255,0.48)',
+          marginTop:'12px',
+          whiteSpace:'nowrap',
+          maxWidth:'95%',
+          overflow:'hidden',
+          flexShrink:0,
+        }}
       >
-        <motion.span animate={{scale:[1,1.5,1],opacity:[1,0.5,1]}} transition={{duration:2,repeat:Infinity}} style={{width:'7px',height:'7px',borderRadius:'50%',background:'#4ade80',flexShrink:0,display:'inline-block'}}/>
+        <motion.span animate={{scale:[1,1.5,1],opacity:[1,0.5,1]}} transition={{duration:2,repeat:Infinity}} style={{width:'clamp(5px, 2vw, 7px)',height:'clamp(5px, 2vw, 7px)',borderRadius:'50%',background:'#4ade80',flexShrink:0,display:'inline-block'}}/>
         <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{typedDisplay}</span>
-        <motion.span animate={{opacity:[1,0,1]}} transition={{duration:0.9,repeat:Infinity}} style={{display:'inline-block',width:'5px',height:'11px',background:'#a855f7',borderRadius:'1px',flexShrink:0}}/>
+        <motion.span animate={{opacity:[1,0,1]}} transition={{duration:0.9,repeat:Infinity}} style={{display:'inline-block',width:'clamp(3px, 1.5vw, 5px)',height:'clamp(8px, 3vw, 11px)',background:'#a855f7',borderRadius:'1px',flexShrink:0}}/>
       </motion.div>
 
-      {/* Mobile name input — visible field for touch users */}
+      {/* Mobile name input */}
       {phase==='ask-name'&&(
         <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} className="mt-3 flex gap-2 items-center">
           <input
@@ -530,55 +541,91 @@ function Notebook3D() {
             onChange={e=>{setPromptInput(e.target.value);promptRef.current=e.target.value}}
             onKeyDown={e=>{if(e.key==='Enter')handleNameSubmit()}}
             placeholder="Seu nome..."
-            className="bg-transparent border border-primary/30 rounded-full px-4 py-1.5 text-sm font-mono text-foreground outline-none focus:border-primary/70 w-40"
+            className="bg-transparent border border-primary/30 rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-mono text-foreground outline-none focus:border-primary/70 w-32 sm:w-40"
           />
           <motion.button
             whileHover={{scale:1.05}} whileTap={{scale:0.95}}
             onClick={handleNameSubmit}
-            className="px-4 py-1.5 rounded-full border border-primary/40 text-primary text-sm font-mono"
+            className="px-3 sm:px-4 py-1.5 rounded-full border border-primary/40 text-primary text-xs sm:text-sm font-mono"
           >↵ entrar</motion.button>
         </motion.div>
       )}
 
-      <p className="text-xs text-muted-foreground/40 mt-2 font-mono text-center">
+      <p className="text-xs text-muted-foreground/40 mt-2 font-mono text-center px-2">
         {phase==='ask-name'?'clique nas teclas ou use o teclado físico':'arraste para rotacionar · clique nas teclas'}
       </p>
 
-      {/* Responsive scale */}
-      <style>{`
+      {/* Responsive styles */}
+      <style jsx>{`
         .notebook-shell {
           width: 100%;
           max-width: 440px;
           position: relative;
+          margin: 0 auto;
         }
+        
         .notebook-inner {
           width: 440px;
           height: 420px;
           transform-origin: top center;
+          transition: transform 0.3s ease;
         }
+        
+        /* Responsive breakpoints */
         @media (max-width: 360px) {
           .notebook-shell { max-width: 100%; }
-          .notebook-inner { transform: scale(0.56); margin-bottom: -180px; }
+          .notebook-inner { 
+            transform: scale(0.52); 
+            margin-bottom: -180px;
+          }
         }
+        
         @media (min-width: 361px) and (max-width: 479px) {
           .notebook-shell { max-width: 100%; }
-          .notebook-inner { transform: scale(0.65); margin-bottom: -147px; }
+          .notebook-inner { 
+            transform: scale(0.6); 
+            margin-bottom: -160px;
+          }
         }
+        
         @media (min-width: 480px) and (max-width: 639px) {
-          .notebook-inner { transform: scale(0.78); margin-bottom: -92px; }
+          .notebook-inner { 
+            transform: scale(0.72); 
+            margin-bottom: -110px;
+          }
         }
+        
         @media (min-width: 640px) and (max-width: 767px) {
-          .notebook-inner { transform: scale(0.88); margin-bottom: -50px; }
+          .notebook-inner { 
+            transform: scale(0.85); 
+            margin-bottom: -60px;
+          }
         }
+        
         @media (min-width: 768px) {
-          .notebook-inner { transform: scale(1); margin-bottom: 0; }
+          .notebook-inner { 
+            transform: scale(1); 
+            margin-bottom: 0;
+          }
+        }
+        
+        /* Key buttons responsive */
+        .key-button {
+          transition: background 0.06s, transform 0.06s, box-shadow 0.06s;
+        }
+        
+        /* Responsive pill text */
+        @media (max-width: 480px) {
+          .responsive-pill span {
+            font-size: 9px;
+          }
         }
       `}</style>
     </div>
   )
 }
 
-// ─── About Section ────────────────────────────────────────────────────────────
+// ─── About Section Responsiva ─────────────────────────────────────────────────
 export function AboutSection() {
   const containerRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(containerRef, { once: true, amount: 0.15 })
@@ -603,58 +650,128 @@ export function AboutSection() {
   }, [])
 
   return (
-    <section id="about" className="py-32 md:py-48 relative overflow-hidden">
+    <section id="about" className="py-16 sm:py-24 md:py-32 lg:py-48 relative overflow-hidden">
+      {/* Background orbs responsivos */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div className="absolute top-1/2 left-0 w-[600px] h-[600px] bg-accent/5 rounded-full blur-3xl" animate={{x:[-100,0,-100],opacity:[0.2,0.4,0.2]}} transition={{duration:14,repeat:Infinity,ease:'easeInOut'}}/>
-        <motion.div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl" animate={{y:[0,-50,0],opacity:[0.2,0.4,0.2]}} transition={{duration:11,repeat:Infinity,ease:'easeInOut'}}/>
+        <motion.div 
+          className="absolute top-1/2 left-0 w-[300px] sm:w-[400px] md:w-[600px] h-[300px] sm:h-[400px] md:h-[600px] bg-accent/5 rounded-full blur-3xl" 
+          animate={{x:[-100,0,-100],opacity:[0.2,0.4,0.2]}} 
+          transition={{duration:14,repeat:Infinity,ease:'easeInOut'}}
+        />
+        <motion.div 
+          className="absolute bottom-0 right-0 w-[250px] sm:w-[350px] md:w-[400px] h-[250px] sm:h-[350px] md:h-[400px] bg-primary/5 rounded-full blur-3xl" 
+          animate={{y:[0,-50,0],opacity:[0.2,0.4,0.2]}} 
+          transition={{duration:11,repeat:Infinity,ease:'easeInOut'}}
+        />
       </div>
 
-      <div ref={containerRef} className="container mx-auto px-6 relative z-10">
-        <motion.div initial={{opacity:0,y:50}} animate={isInView?{opacity:1,y:0}:{}} transition={{duration:0.8}} className="mb-20">
-          <motion.span initial={{opacity:0,x:-20}} animate={isInView?{opacity:1,x:0}:{}} transition={{duration:0.6,delay:0.2}} className="text-sm text-primary tracking-widest uppercase font-mono mb-4 block">
+      <div ref={containerRef} className="container mx-auto px-4 sm:px-6 relative z-10">
+        {/* Section header responsivo */}
+        <motion.div
+          initial={{opacity:0,y:50}}
+          animate={isInView?{opacity:1,y:0}:{}}
+          transition={{duration:0.8}}
+          className="mb-12 sm:mb-16 md:mb-20"
+        >
+          <motion.span
+            initial={{opacity:0,x:-20}}
+            animate={isInView?{opacity:1,x:0}:{}}
+            transition={{duration:0.6,delay:0.2}}
+            className="text-xs sm:text-sm text-primary tracking-widest uppercase font-mono mb-3 sm:mb-4 block"
+          >
             01 / Sobre
           </motion.span>
-          <motion.h2 initial={{opacity:0,y:30}} animate={isInView?{opacity:1,y:0}:{}} transition={{duration:0.8,delay:0.3}} className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+          <motion.h2
+            initial={{opacity:0,y:30}}
+            animate={isInView?{opacity:1,y:0}:{}}
+            transition={{duration:0.8,delay:0.3}}
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight"
+          >
             Construindo o{' '}
             <span className="text-gradient">futuro digital</span>
           </motion.h2>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-          {/* Notebook column */}
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 xl:gap-24 items-center">
+          {/* Notebook column responsivo */}
           <motion.div style={{y:imageY}} className="relative">
-            <motion.div initial={{opacity:0,scale:0.88}} animate={isInView?{opacity:1,scale:1}:{}} transition={{duration:0.9,delay:0.2}} className="relative rounded-2xl overflow-visible" style={{minHeight:'440px'}}>
-              <div className="absolute inset-0 rounded-2xl" style={{background:'linear-gradient(135deg,rgba(124,58,237,0.06) 0%,rgba(10,8,24,0.5) 50%,rgba(6,182,212,0.04) 100%)',border:'1px solid rgba(255,255,255,0.05)'}}/>
-              <div className="absolute inset-0 rounded-2xl" style={{backgroundImage:'radial-gradient(rgba(168,85,247,0.1) 1px,transparent 1px)',backgroundSize:'24px 24px'}}/>
-              <motion.div initial={{opacity:0,y:-10}} animate={isInView?{opacity:1,y:0}:{}} transition={{delay:0.7,duration:0.5}} className="absolute top-4 left-4 z-10" style={{background:'rgba(10,8,24,0.92)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:'8px',padding:'5px 12px',fontFamily:'monospace',fontSize:'11px',display:'flex',alignItems:'center',gap:'6px'}}>
-                <span style={{color:'#f87171'}}>●</span>
-                <span style={{color:'#fbbf24'}}>●</span>
-                <span style={{color:'#4ade80'}}>●</span>
-                <span style={{color:'rgba(255,255,255,0.3)',marginLeft:'4px'}}>camilly.tsx</span>
+            <motion.div 
+              initial={{opacity:0,scale:0.88}} 
+              animate={isInView?{opacity:1,scale:1}:{}} 
+              transition={{duration:0.9,delay:0.2}} 
+              className="relative rounded-2xl overflow-visible"
+              style={{minHeight:'min(440px, 70vw)'}}
+            >
+              <div className="absolute inset-0 rounded-2xl" style={{
+                background:'linear-gradient(135deg,rgba(124,58,237,0.06) 0%,rgba(10,8,24,0.5) 50%,rgba(6,182,212,0.04) 100%)',
+                border:'1px solid rgba(255,255,255,0.05)'
+              }}/>
+              <div className="absolute inset-0 rounded-2xl" style={{
+                backgroundImage:'radial-gradient(rgba(168,85,247,0.1) 1px,transparent 1px)',
+                backgroundSize:'24px 24px'
+              }}/>
+              <motion.div 
+                initial={{opacity:0,y:-10}} 
+                animate={isInView?{opacity:1,y:0}:{}} 
+                transition={{delay:0.7,duration:0.5}} 
+                className="absolute top-2 sm:top-3 md:top-4 left-2 sm:left-3 md:left-4 z-10"
+                style={{
+                  background:'rgba(10,8,24,0.92)',
+                  border:'1px solid rgba(255,255,255,0.07)',
+                  borderRadius:'8px',
+                  padding:'4px 8px sm:5px 12px',
+                  fontFamily:'monospace',
+                  fontSize:'clamp(9px, 3vw, 11px)',
+                  display:'flex',
+                  alignItems:'center',
+                  gap:'4px sm:6px'
+                }}
+              >
+                <span style={{color:'#f87171', fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
+                <span style={{color:'#fbbf24', fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
+                <span style={{color:'#4ade80', fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
+                <span style={{color:'rgba(255,255,255,0.3)',marginLeft:'4px', fontSize:'clamp(8px, 2.5vw, 11px)'}}>camilly.tsx</span>
               </motion.div>
-              <div className="relative z-10 pt-6 px-2 sm:px-4">
+              <div className="relative z-10 pt-4 sm:pt-5 md:pt-6 px-1 sm:px-3 md:px-4">
                 <Notebook3D />
               </div>
             </motion.div>
-            <motion.div initial={{opacity:0,scale:0}} animate={isInView?{opacity:1,scale:1}:{}} transition={{duration:0.6,delay:0.5}} className="absolute -top-5 -right-5 w-20 h-20 border border-primary/20 rounded-2xl pointer-events-none"/>
-            <motion.div initial={{opacity:0,scale:0}} animate={isInView?{opacity:1,scale:1}:{}} transition={{duration:0.6,delay:0.65}} className="absolute -bottom-5 -left-5 w-28 h-28 border border-accent/20 rounded-2xl pointer-events-none"/>
+            
+            {/* Decorative corners responsivos */}
+            <motion.div 
+              initial={{opacity:0,scale:0}} 
+              animate={isInView?{opacity:1,scale:1}:{}} 
+              transition={{duration:0.6,delay:0.5}} 
+              className="absolute -top-3 sm:-top-4 md:-top-5 -right-3 sm:-right-4 md:-right-5 w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 border border-primary/20 rounded-xl sm:rounded-2xl pointer-events-none"
+            />
+            <motion.div 
+              initial={{opacity:0,scale:0}} 
+              animate={isInView?{opacity:1,scale:1}:{}} 
+              transition={{duration:0.6,delay:0.65}} 
+              className="absolute -bottom-3 sm:-bottom-4 md:-bottom-5 -left-3 sm:-left-4 md:-left-5 w-16 sm:w-20 md:w-28 h-16 sm:h-20 md:h-28 border border-accent/20 rounded-xl sm:rounded-2xl pointer-events-none"
+            />
           </motion.div>
 
-          {/* Text column */}
-          <motion.div style={{y:contentY}} className="space-y-8">
-            <motion.div initial={{opacity:0,y:30}} animate={isInView?{opacity:1,y:0}:{}} transition={{duration:0.8,delay:0.3}} className="space-y-6">
-              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+          {/* Text column responsivo */}
+          <motion.div style={{y:contentY}} className="space-y-6 sm:space-y-7 md:space-y-8">
+            <motion.div 
+              initial={{opacity:0,y:30}} 
+              animate={isInView?{opacity:1,y:0}:{}} 
+              transition={{duration:0.8,delay:0.3}} 
+              className="space-y-4 sm:space-y-5 md:space-y-6"
+            >
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed">
                 Sou estudante de{' '}
                 <span className="text-foreground font-medium">Técnico em Informática para Internet</span>{' '}
                 no IFSP, tenho 18 anos e sou apaixonada por construir interfaces web que unem{' '}
                 <span className="text-primary">design</span> e{' '}
                 <span className="text-accent">tecnologia</span>.
               </p>
-              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed">
                 Proativa e organizada, busco aplicar meus conhecimentos em desenvolvimento
                 front-end para criar experiências digitais acessíveis e de alta qualidade.
               </p>
-              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed">
                 Meu foco está em{' '}
                 <span className="text-foreground">React</span>,{' '}
                 <span className="text-foreground">TypeScript</span> e{' '}
@@ -664,31 +781,52 @@ export function AboutSection() {
               </p>
             </motion.div>
 
-            {/* Stats */}
-            <motion.div initial={{opacity:0,y:30}} animate={isInView?{opacity:1,y:0}:{}} transition={{duration:0.8,delay:0.5}} className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-border/30">
+            {/* Stats grid responsivo */}
+            <motion.div 
+              initial={{opacity:0,y:30}} 
+              animate={isInView?{opacity:1,y:0}:{}} 
+              transition={{duration:0.8,delay:0.5}} 
+              className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 md:gap-6 pt-6 sm:pt-7 md:pt-8 border-t border-border/30"
+            >
               {stats.map((stat,index)=>(
-                <motion.div key={stat.label} initial={{opacity:0,y:20}} animate={isInView?{opacity:1,y:0}:{}} transition={{duration:0.5,delay:0.6+index*0.1}} className="text-center md:text-left">
-                  <motion.div className="text-3xl md:text-4xl font-bold text-gradient" whileHover={{scale:1.08}} transition={{duration:0.2}}>
+                <motion.div 
+                  key={stat.label} 
+                  initial={{opacity:0,y:20}} 
+                  animate={isInView?{opacity:1,y:0}:{}} 
+                  transition={{duration:0.5,delay:0.6+index*0.1}} 
+                  className="text-center md:text-left"
+                >
+                  <motion.div 
+                    className="text-2xl sm:text-3xl md:text-4xl font-bold text-gradient" 
+                    whileHover={{scale:1.08}} 
+                    transition={{duration:0.2}}
+                  >
                     <span className="stat-value" data-target={stat.value}>{stat.value}</span>
                     <span className="text-primary">{stat.suffix}</span>
                   </motion.div>
-                  <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">{stat.label}</p>
                 </motion.div>
               ))}
             </motion.div>
 
-            {/* Education */}
-            <motion.div initial={{opacity:0,y:20}} animate={isInView?{opacity:1,y:0}:{}} transition={{duration:0.5,delay:0.8}} whileHover={{scale:1.02}} className="inline-flex items-center gap-3 glass rounded-full px-6 py-3">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Education badge responsivo */}
+            <motion.div 
+              initial={{opacity:0,y:20}} 
+              animate={isInView?{opacity:1,y:0}:{}} 
+              transition={{duration:0.5,delay:0.8}} 
+              whileHover={{scale:1.02}} 
+              className="inline-flex items-center gap-2 sm:gap-3 glass rounded-full px-4 sm:px-5 md:px-6 py-2 sm:py-3"
+            >
+              <div className="w-6 sm:w-7 md:w-8 h-6 sm:h-7 md:h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 sm:w-3.5 md:w-4 h-3 sm:h-3.5 md:h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path d="M12 14l9-5-9-5-9 5 9 5z"/>
                   <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"/>
                 </svg>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Estudante</p>
-                <p className="text-sm font-medium">IFSP — Tec. Informática para Internet</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Estudante</p>
+                <p className="text-xs sm:text-sm font-medium">IFSP — Tec. Informática para Internet</p>
               </div>
             </motion.div>
           </motion.div>

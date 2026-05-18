@@ -4,7 +4,7 @@ import { Navbar } from '@/components/navbar'
 import { HeroSection } from '@/components/sections/hero'
 
 import { LoadingScreen } from '@/components/loading-screen'
-
+import { SkillsSection } from '@/components/sections/skills'
 import { AboutSection } from '@/components/sections/about'
 
 
@@ -23,6 +23,9 @@ export default function Home() {
 
       {/* About Section */}
         <AboutSection />
+
+        {/* Skills Section */}
+        <SkillsSection />
 
      
 
