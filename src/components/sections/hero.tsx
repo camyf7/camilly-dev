@@ -651,18 +651,23 @@ export function HeroSection() {
   }
 
   const letterVariants = {
-    hidden: { opacity: 0, y: 100, rotateX: -80, filter: 'blur(8px)' },
-    visible: {
-      opacity: 1,
-      y: 0,
-      rotateX: 0,
-      filter: 'blur(0px)',
-      transition: {
-        duration: 0.7,
-        ease: [0.23, 1, 0.32, 1],
-      },
+  hidden: {
+    opacity: 0,
+    y: 100,
+    rotateX: -80,
+    filter: 'blur(8px)',
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    rotateX: 0,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.7,
+      ease: [0.23, 1, 0.32, 1] as [number, number, number, number],
     },
-  }
+  },
+}
 
   const firstName = 'Camilly'
   const lastName = 'Ferreira'
