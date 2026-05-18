@@ -6,6 +6,7 @@ import { HeroSection } from '@/components/sections/hero'
 import { LoadingScreen } from '@/components/loading-screen'
 import { SkillsSection } from '@/components/sections/skills'
 import { AboutSection } from '@/components/sections/about'
+import { ProjectsSection } from '@/components/sections/projects'
 
 
 export default function Home() {
@@ -26,6 +27,9 @@ export default function Home() {
 
         {/* Skills Section */}
         <SkillsSection />
+
+        {/* Projects Section */}
+        <ProjectsSection />
 
      
 

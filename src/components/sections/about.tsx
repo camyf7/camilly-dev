@@ -871,14 +871,14 @@ export function AboutSection() {
           >
             <span
               className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight transition-colors duration-500"
-              style={{ color: 'rgba(169, 85, 247, 0.27)' }}
+              style={{ color: 'rgba(169, 85, 247, 0.38)' }}
               onMouseEnter={(e) => {
                 ;(e.target as HTMLSpanElement).style.color =
-                  'rgba(169, 85, 247, 0.41)'
+                  'rgba(169, 85, 247, 0.15)'
               }}
               onMouseLeave={(e) => {
                 ;(e.target as HTMLSpanElement).style.color =
-                  'rgba(169, 85, 247, 0.71)'
+                  'rgba(169, 85, 247, 0.25)'
               }}
             >
               {tech}
