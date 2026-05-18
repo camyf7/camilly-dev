@@ -93,8 +93,8 @@ function Notebook3D() {
   const lastPos = useRef({ x: 0, y: 0 })
   const autoT = useRef(0)
   const autoActive = useRef(true)
-  const autoTimer = useRef<ReturnType<typeof setTimeout>>()
-  const rafRef = useRef<number>()
+  const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const rafRef = useRef<number | null>(null)
 
   // UI state
   const [pressedKey, setPressedKey] = useState<string | null>(null)
