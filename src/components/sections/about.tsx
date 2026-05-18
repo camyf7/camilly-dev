@@ -139,7 +139,9 @@ function Notebook3D() {
     isDragging.current = true
     autoActive.current = false
     lastPos.current = { x, y }
-    clearTimeout(autoTimer.current)
+    if (autoTimer.current) {
+  clearTimeout(autoTimer.current)
+}
   }
   const moveDrag = (x: number, y: number) => {
     if (!isDragging.current) return
