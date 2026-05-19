@@ -136,11 +136,14 @@ function Notebook3D() {
   }, [applyTransform])
 
   const startDrag = (x: number, y: number) => {
-    isDragging.current = true
-    autoActive.current = false
-    lastPos.current = { x, y }
+  isDragging.current = true
+  autoActive.current = false
+  lastPos.current = { x, y }
+
+  if (autoTimer.current) {
     clearTimeout(autoTimer.current)
   }
+}
   const moveDrag = (x: number, y: number) => {
     if (!isDragging.current) return
     rotY.current = Math.max(-55, Math.min(55, rotY.current + (x - lastPos.current.x) * 0.55))

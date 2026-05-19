@@ -299,7 +299,6 @@ function FloatingBrowserCard() {
                 <motion.div
                   key={i}
                   onClick={() => setCurrentProject(i)}
-                  style={{ cursor: 'pointer' }}
                   animate={{
                     width: i === currentProject ? '20px' : '6px',
                     background:
@@ -309,7 +308,7 @@ function FloatingBrowserCard() {
                   }}
                   transition={{ duration: 0.3 }}
                   className="rounded-full"
-                  style2={{ height: '6px', borderRadius: '3px' }}
+                  style={{ height: '6px', borderRadius: '3px', cursor: 'pointer' }}
                 />
               ))}
             </div>
@@ -474,29 +473,30 @@ function MagneticButton({
 
   return (
     <motion.a
-      ref={btnRef}
-      href={href}
-      onClick={onClick}
-      onMouseMove={handleMove}
-      onMouseLeave={handleLeave}
-      style={{ x: springX, y: springY }}
-      whileHover={{ scale: 1.06 }}
-      whileTap={{ scale: 0.94 }}
-      className={
-        variant === 'primary'
-          ? 'group relative px-8 py-4 rounded-full font-semibold overflow-hidden inline-flex items-center gap-2 text-sm tracking-wide'
-          : 'group px-8 py-4 border border-white/10 hover:border-primary/40 rounded-full font-semibold transition-colors inline-flex items-center gap-2 text-sm tracking-wide hover:bg-primary/5 text-foreground'
-      }
-      style2={
-        variant === 'primary'
-          ? {
-              background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-              boxShadow: '0 0 30px rgba(168, 85, 247, 0.3)',
-              color: '#fff',
-            }
-          : {}
-      }
-    >
+  ref={btnRef}
+  href={href}
+  onClick={onClick}
+  onMouseMove={handleMove}
+  onMouseLeave={handleLeave}
+  style={{
+    x: springX,
+    y: springY,
+    ...(variant === 'primary'
+      ? {
+          background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+          boxShadow: '0 0 30px rgba(168, 85, 247, 0.3)',
+          color: '#fff',
+        }
+      : {}),
+  }}
+  whileHover={{ scale: 1.06 }}
+  whileTap={{ scale: 0.94 }}
+  className={
+    variant === 'primary'
+      ? 'group relative px-8 py-4 rounded-full font-semibold overflow-hidden inline-flex items-center gap-2 text-sm tracking-wide'
+      : 'group px-8 py-4 border border-white/10 hover:border-primary/40 rounded-full font-semibold transition-colors inline-flex items-center gap-2 text-sm tracking-wide hover:bg-primary/5 text-foreground'
+  }
+>
       {variant === 'primary' && (
         <>
           <motion.div
@@ -651,18 +651,23 @@ export function HeroSection() {
   }
 
   const letterVariants = {
-    hidden: { opacity: 0, y: 100, rotateX: -80, filter: 'blur(8px)' },
-    visible: {
-      opacity: 1,
-      y: 0,
-      rotateX: 0,
-      filter: 'blur(0px)',
-      transition: {
-        duration: 0.7,
-        ease: [0.23, 1, 0.32, 1],
-      },
+  hidden: {
+    opacity: 0,
+    y: 100,
+    rotateX: -80,
+    filter: 'blur(8px)',
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    rotateX: 0,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.7,
+      ease: [0.23, 1, 0.32, 1] as [number, number, number, number],
     },
-  }
+  },
+}
 
   const firstName = 'Camilly'
   const lastName = 'Ferreira'
