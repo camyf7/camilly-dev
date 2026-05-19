@@ -7,7 +7,7 @@ import { LoadingScreen } from '@/components/loading-screen'
 import { SkillsSection } from '@/components/sections/skills'
 import { AboutSection } from '@/components/sections/about'
 import { ProjectsSection } from '@/components/sections/projects'
-
+import { HorizontalShowcase } from '@/components/sections/horizontal-showcase'
 
 export default function Home() {
   return (
@@ -24,6 +24,9 @@ export default function Home() {
 
       {/* About Section */}
         <AboutSection />
+
+        {/* Horizontal Showcase */}
+        <HorizontalShowcase />
 
         {/* Skills Section */}
         <SkillsSection />

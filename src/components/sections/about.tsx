@@ -848,56 +848,7 @@ export function AboutSection() {
             </motion.div>
           </motion.div>
 
-          {/* ── Tech Marquee ── */}
-<motion.div
-  initial={{ opacity: 0 }}
-  animate={isInView ? { opacity: 1 } : {}}
-  transition={{ duration: 0.8, delay: 0.9 }}
-  className="relative mt-20 sm:mt-24 overflow-hidden left-1/2 w-screen -translate-x-1/2"
-  style={{
-    WebkitMask:
-      'linear-gradient(90deg, transparent, black 12%, black 88%, transparent)',
-    mask:
-      'linear-gradient(90deg, transparent, black 12%, black 88%, transparent)',
-  }}
->
-  <div className="flex gap-10 marquee w-max">
-    {[0, 1].map((setIdx) => (
-      <div key={setIdx} className="flex gap-10 shrink-0 px-6">
-        {MARQUEE_TECHS.map((tech) => (
-          <div
-            key={`${setIdx}-${tech}`}
-            className="flex items-center gap-10 whitespace-nowrap"
-          >
-            <span
-              className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight transition-colors duration-500"
-              style={{ color: 'rgba(169, 85, 247, 0.38)' }}
-              onMouseEnter={(e) => {
-                ;(e.target as HTMLSpanElement).style.color =
-                  'rgba(169, 85, 247, 0.15)'
-              }}
-              onMouseLeave={(e) => {
-                ;(e.target as HTMLSpanElement).style.color =
-                  'rgba(169, 85, 247, 0.25)'
-              }}
-            >
-              {tech}
-            </span>
-
-            <span
-              style={{
-                color: 'rgba(169, 85, 247, 0.43)',
-                fontSize: '8px',
-              }}
-            >
-              ✦
-            </span>
-          </div>
-        ))}
-      </div>
-    ))}
-  </div>
-</motion.div>
+         
 
         </div>
       </div>
