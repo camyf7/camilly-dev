@@ -8,7 +8,7 @@ import { SkillsSection } from '@/components/sections/skills'
 import { AboutSection } from '@/components/sections/about'
 import { ProjectsSection } from '@/components/sections/projects'
 import { HorizontalShowcase } from '@/components/sections/horizontal-showcase'
-
+import { JourneySection } from '@/components/sections/journey'
 export default function Home() {
   return (
     <>
@@ -34,7 +34,8 @@ export default function Home() {
         {/* Projects Section */}
         <ProjectsSection />
 
-     
+        {/* Journey Section */}
+        <JourneySection />
 
          
 
