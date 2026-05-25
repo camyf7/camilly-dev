@@ -31,7 +31,6 @@ const CODE_LINES: [number, number, string][] = [
   [14,34,'#34d399'],
 ]
 
-// w = flex proportion (each row sums to ~100)
 const KEY_ROWS: KeyRow[] = [
   { keys: [{label:'`',w:7},{label:'1',w:7},{label:'2',w:7},{label:'3',w:7},{label:'4',w:7},{label:'5',w:7},{label:'6',w:7},{label:'7',w:7},{label:'8',w:7},{label:'9',w:7},{label:'0',w:7},{label:'-',w:7},{label:'=',w:7},{label:'⌫',w:11}] },
   { keys: [{label:'⇥',w:11},{label:'Q',w:7},{label:'W',w:7},{label:'E',w:7},{label:'R',w:7},{label:'T',w:7},{label:'Y',w:7},{label:'U',w:7},{label:'I',w:7},{label:'O',w:7},{label:'P',w:7},{label:'[',w:7},{label:']',w:7},{label:'\\',w:9}] },
@@ -69,32 +68,16 @@ const BOOT_SEQUENCE = [
   '[  OK  ] Tailwind CSS 3.4 ativo',
 ]
 
-const MARQUEE_TECHS = [
-  'React',
-  'Next.js',
-  'TypeScript',
-  'Tailwind CSS',
-  'Framer Motion',
-  'Node.js',
-  'UI/UX',
-  'Responsive Design',
-  'Animations',
-]
-
 // ─── Notebook3D ───────────────────────────────────────────────────────────────
 function Notebook3D() {
   const laptopRef = useRef<HTMLDivElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
 
-  // 3D rotation
+  // 3D rotation — apenas drag, sem auto-rotate
   const rotX = useRef(16)
   const rotY = useRef(-8)
   const isDragging = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
-  const autoT = useRef(0)
-  const autoActive = useRef(true)
-  const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const rafRef = useRef<number | null>(null)
 
   // UI state
   const [pressedKey, setPressedKey] = useState<string | null>(null)
@@ -106,7 +89,6 @@ function Notebook3D() {
   const [codeWidths, setCodeWidths] = useState<number[]>(CODE_LINES.map(([,w]) => w))
   const [codeColors, setCodeColors] = useState<string[]>(CODE_LINES.map(([,,c]) => c))
 
-  // Refs to avoid stale closures
   const phaseRef = useRef<'boot' | 'ask-name' | 'ready'>('boot')
   const promptRef = useRef('')
   const isTyping = useRef(false)
@@ -115,45 +97,29 @@ function Notebook3D() {
   useEffect(() => { phaseRef.current = phase }, [phase])
   useEffect(() => { promptRef.current = promptInput }, [promptInput])
 
-  // ── Auto rotate ──────────────────────────────────────────────────────────
+  // ── Apply transform ──────────────────────────────────────────────────────
   const applyTransform = useCallback(() => {
     if (laptopRef.current)
       laptopRef.current.style.transform =
         `rotateX(${rotX.current}deg) rotateY(${rotY.current}deg)`
   }, [])
 
-  useEffect(() => {
-    const tick = () => {
-      if (autoActive.current && !isDragging.current) {
-        autoT.current += 0.005
-        rotY.current = -8 + Math.sin(autoT.current) * 12
-        applyTransform()
-      }
-      rafRef.current = requestAnimationFrame(tick)
-    }
-    rafRef.current = requestAnimationFrame(tick)
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [applyTransform])
-
+  // ── Drag handlers ────────────────────────────────────────────────────────
   const startDrag = (x: number, y: number) => {
-  isDragging.current = true
-  autoActive.current = false
-  lastPos.current = { x, y }
-
-  if (autoTimer.current) {
-    clearTimeout(autoTimer.current)
+    isDragging.current = true
+    lastPos.current = { x, y }
   }
-}
+
   const moveDrag = (x: number, y: number) => {
     if (!isDragging.current) return
-    rotY.current = Math.max(-55, Math.min(55, rotY.current + (x - lastPos.current.x) * 0.55))
+    rotY.current = rotY.current + (x - lastPos.current.x) * 0.55
     rotX.current = Math.max(-32, Math.min(38, rotX.current - (y - lastPos.current.y) * 0.45))
     lastPos.current = { x, y }
     applyTransform()
   }
+
   const endDrag = () => {
     isDragging.current = false
-    autoTimer.current = setTimeout(() => { autoActive.current = true }, 2800)
   }
 
   // ── Boot ─────────────────────────────────────────────────────────────────
@@ -202,9 +168,8 @@ function Notebook3D() {
     tick()
   }, [])
 
-  // ── Core key action — single source of truth ──────────────────────────────
+  // ── Core key action ───────────────────────────────────────────────────────
   const handleKeyAction = useCallback((label: string) => {
-    // Flash visual key
     setPressedKey(label)
     setTimeout(() => setPressedKey(p => p === label ? null : p), 150)
 
@@ -222,7 +187,6 @@ function Notebook3D() {
 
     if (phaseRef.current !== 'ready') return
 
-    // Scramble one code line
     const li = Math.floor(Math.random() * CODE_LINES.length)
     setCodeWidths(p => { const n=[...p]; n[li]=16+Math.random()*80; return n })
     setCodeColors(p => { const n=[...p]; n[li]=CODE_PALETTE[Math.floor(Math.random()*CODE_PALETTE.length)]; return n })
@@ -239,11 +203,10 @@ function Notebook3D() {
     setTermLines(p => [...p.slice(-6), cmds[Math.floor(Math.random() * cmds.length)]])
   }, [handleNameSubmit, startTyping])
 
-  // ── Physical keyboard ───────────────────────────────────────────────────
+  // ── Physical keyboard ─────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (document.activeElement === mobileInputRef.current) return
-
       if (phaseRef.current === 'ask-name') {
         if (e.key === 'Enter') { handleNameSubmit(); return }
         if (e.key === 'Backspace') { handleKeyAction('⌫'); return }
@@ -267,7 +230,6 @@ function Notebook3D() {
           e.stopPropagation()
           if (label) handleKeyAction(label)
         }}
-        className="key-button"
         style={{
           flex: w,
           height: '100%',
@@ -294,7 +256,7 @@ function Notebook3D() {
   return (
     <div className="relative w-full flex flex-col items-center select-none px-2 sm:px-4" style={{ minHeight: 'min(400px, 70vw)' }}>
 
-      {/* ── Floating tech chips responsivos ── */}
+      {/* ── Floating tech chips ── */}
       {CHIPS.map((chip, i) => (
         <motion.div
           key={chip.label}
@@ -324,7 +286,7 @@ function Notebook3D() {
         </motion.div>
       ))}
 
-      {/* ── 3D scene responsiva ── */}
+      {/* ── 3D scene ── */}
       <div
         className="w-full flex justify-center"
         style={{ perspective: '1000px', touchAction: 'none' }}
@@ -332,20 +294,19 @@ function Notebook3D() {
         onMouseMove={e => moveDrag(e.clientX, e.clientY)}
         onMouseUp={endDrag}
         onMouseLeave={endDrag}
-        onTouchStart={e => { startDrag(e.touches[0].clientX, e.touches[0].clientY) }}
-        onTouchMove={e => { moveDrag(e.touches[0].clientX, e.touches[0].clientY) }}
+        onTouchStart={e => startDrag(e.touches[0].clientX, e.touches[0].clientY)}
+        onTouchMove={e => moveDrag(e.touches[0].clientX, e.touches[0].clientY)}
         onTouchEnd={endDrag}
       >
         <div className="notebook-shell w-full max-w-[440px] relative">
           <div className="notebook-inner w-[440px] h-[420px] transform origin-top-center mx-auto">
             <div
               ref={laptopRef}
-              className="relative"
               style={{
                 width: '440px', height: '420px',
                 position: 'relative', transformStyle: 'preserve-3d',
                 transform: `rotateX(${rotX.current}deg) rotateY(${rotY.current}deg)`,
-                cursor: 'grab',
+                cursor: isDragging.current ? 'grabbing' : 'grab',
               }}
             >
               {/* ─── LID ─── */}
@@ -355,13 +316,16 @@ function Notebook3D() {
                 transformStyle: 'preserve-3d', transformOrigin: 'bottom center',
                 transform: 'rotateX(-26deg)',
               }}>
-                {/* Face */}
+                {/* ── Face FRONTAL da tampa ── */}
                 <div style={{
                   width: '440px', height: '270px',
                   background: 'linear-gradient(155deg,#1e1b32 0%,#0e0c1e 55%,#14112a 100%)',
                   borderRadius: '14px 14px 3px 3px',
                   border: '1px solid rgba(140,100,255,0.16)',
-                  position: 'absolute', overflow: 'hidden',
+                  position: 'absolute',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  overflow: 'hidden',
                 }}>
                   {/* Webcam */}
                   <div style={{
@@ -398,14 +362,11 @@ function Notebook3D() {
 
                     {/* Editor */}
                     <div style={{flex:1,display:'flex',overflow:'hidden'}}>
-                      {/* Sidebar - esconder em telas muito pequenas */}
                       <div style={{width:'28px',background:'rgba(0,0,0,0.28)',borderRight:'1px solid rgba(255,255,255,0.04)',display:'flex',flexDirection:'column',alignItems:'center',padding:'8px 0',gap:'7px'}} className="hidden sm:flex">
                         {['⌘','⊞','⊙','⚙'].map((ic,i)=>(
                           <div key={i} style={{width:'15px',height:'15px',borderRadius:'3px',background:i===0?'rgba(168,85,247,0.4)':'rgba(255,255,255,0.07)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'8px',color:i===0?'#d8a4ff':'rgba(255,255,255,0.3)'}}>{ic}</div>
                         ))}
                       </div>
-
-                      {/* Code + terminal */}
                       <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
                         {phase==='ready'&&(
                           <div style={{flex:1,padding:'6px 8px',overflow:'hidden'}}>
@@ -414,7 +375,6 @@ function Notebook3D() {
                             ))}
                           </div>
                         )}
-                        {/* Terminal */}
                         <div style={{
                           background:'rgba(0,0,0,0.72)',
                           borderTop:phase==='ready'?'1px solid rgba(120,80,240,0.16)':'none',
@@ -425,30 +385,20 @@ function Notebook3D() {
                           display:'flex',flexDirection:'column',justifyContent:'flex-end',
                         }}>
                           {termLines.slice(-8).map((line, i) => {
-  const safeLine = line ?? ''
-
-  return (
-    <div
-      key={i}
-      style={{
-        color: safeLine.startsWith('[  OK  ]')
-          ? '#4ade80'
-          : safeLine.startsWith('root@') || safeLine.startsWith('Olá')
-          ? '#a855f7'
-          : safeLine.startsWith('$')
-          ? '#06b6d4'
-          : safeLine.startsWith('>')
-          ? '#fb923c'
-          : 'rgba(200,200,220,0.7)',
-        lineHeight: '1.5',
-        whiteSpace: 'pre-wrap',
-        fontSize: 'clamp(7px, 2vw, 9px)',
-      }}
-    >
-      {safeLine}
-    </div>
-  )
-})}
+                            const safeLine = line ?? ''
+                            return (
+                              <div key={i} style={{
+                                color: safeLine.startsWith('[  OK  ]') ? '#4ade80'
+                                  : safeLine.startsWith('root@') || safeLine.startsWith('Olá') ? '#a855f7'
+                                  : safeLine.startsWith('$') ? '#06b6d4'
+                                  : safeLine.startsWith('>') ? '#fb923c'
+                                  : 'rgba(200,200,220,0.7)',
+                                lineHeight: '1.5',
+                                whiteSpace: 'pre-wrap',
+                                fontSize: 'clamp(7px, 2vw, 9px)',
+                              }}>{safeLine}</div>
+                            )
+                          })}
                           {phase==='ask-name'&&(
                             <div style={{display:'flex',alignItems:'center',gap:'3px',marginTop:'2px'}}>
                               <span style={{color:'#a855f7',fontSize:'clamp(7px, 2vw, 9px)'}}>{'> '}</span>
@@ -468,22 +418,71 @@ function Notebook3D() {
                   </div>
                 </div>
 
-                {/* Lid back */}
-                <div style={{width:'440px',height:'270px',background:'linear-gradient(155deg,#0e0c1e 0%,#0a0818 100%)',borderRadius:'14px 14px 3px 3px',border:'1px solid rgba(100,80,200,0.1)',position:'absolute',transform:'rotateX(180deg) translateZ(1px)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <div style={{width:'42px',height:'42px',borderRadius:'10px',background:'rgba(168,85,247,0.07)',border:'1px solid rgba(168,85,247,0.14)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'monospace',fontSize:'16px',color:'rgba(168,85,247,0.35)',fontWeight:'bold'}}>C</div>
+                {/* ── Face TRASEIRA da tampa — logo LOQ ── */}
+                <div style={{
+                  width: '440px',
+                  height: '270px',
+                  background: 'linear-gradient(155deg,#0e0c1e 0%,#0a0818 100%)',
+                  borderRadius: '14px 14px 3px 3px',
+                  border: '1px solid rgba(100,80,200,0.1)',
+                  position: 'absolute',
+                  transform: 'rotateY(180deg)',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {/* L */}
+                    <span style={{
+                      fontSize: '42px', fontFamily: 'monospace', fontWeight: 'bold',
+                      color: 'rgba(168,85,247,0.6)', letterSpacing: '-2px', lineHeight: 1,
+                    }}>L</span>
+                    {/* O */}
+                    <div style={{ position: 'relative', width: '38px', height: '38px' }}>
+                      <div style={{
+                        width: '38px', height: '38px', borderRadius: '50%',
+                        border: '3.5px solid rgba(168,85,247,0.6)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'rgba(168,85,247,0.35)' }}/>
+                      </div>
+                    </div>
+                    {/* Q */}
+                    <div style={{ position: 'relative', width: '38px', height: '38px' }}>
+                      <div style={{
+                        width: '38px', height: '38px', borderRadius: '50%',
+                        border: '3.5px solid rgba(168,85,247,0.6)',
+                      }}/>
+                      <div style={{
+                        position: 'absolute', bottom: '1px', right: '0px',
+                        width: '13px', height: '3.5px',
+                        background: 'rgba(168,85,247,0.6)', borderRadius: '2px',
+                        transform: 'rotate(45deg)', transformOrigin: 'left center',
+                      }}/>
+                    </div>
+                  </div>
+                  <div style={{ width: '60px', height: '1px', background: 'rgba(168,85,247,0.25)', borderRadius: '1px' }}/>
                 </div>
               </div>
 
-              {/* ─── BASE ─── */}
-              <div style={{width:'440px',height:'150px',position:'absolute',bottom:0,left:0}}>
+              {/* ─── BASE FRONTAL — com teclado e trackpad ─── */}
+              <div style={{
+                width:'440px', height:'150px', position:'absolute', bottom:0, left:0,
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+              }}>
                 {/* Keyboard housing */}
                 <div style={{
-                  width:'440px',height:'34px',
+                  width:'440px', height:'34px',
                   background:'linear-gradient(180deg,#1c1930 0%,#131228 100%)',
                   border:'1px solid rgba(140,100,255,0.13)',
-                  borderBottom:'none',borderRadius:'3px 3px 0 0',
+                  borderBottom:'none', borderRadius:'3px 3px 0 0',
                   padding:'3px 14px 0',
-                  display:'flex',flexDirection:'column',gap:'2px',
+                  display:'flex', flexDirection:'column', gap:'2px',
                   overflow:'hidden',
                 }}>
                   {KEY_ROWS.map((row,ri)=>(
@@ -496,8 +495,13 @@ function Notebook3D() {
                 </div>
 
                 {/* Base body */}
-                <div style={{width:'440px',height:'116px',background:'linear-gradient(180deg,#131228 0%,#0d0b1a 100%)',border:'1px solid rgba(120,80,240,0.13)',borderTop:'none',borderRadius:'0 0 10px 10px',position:'relative'}}>
-                  {/* Vents - responsivo */}
+                <div style={{
+                  width:'440px', height:'116px',
+                  background:'linear-gradient(180deg,#131228 0%,#0d0b1a 100%)',
+                  border:'1px solid rgba(120,80,240,0.13)',
+                  borderTop:'none', borderRadius:'0 0 10px 10px', position:'relative',
+                }}>
+                  {/* Vents */}
                   <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'clamp(2px, 1vw, 4px)'}}>
                     {Array.from({length:7}).map((_,i)=>(
                       <div key={i} style={{width:'clamp(16px, 5vw, 22px)',height:'3px',borderRadius:'1.5px',background:'rgba(100,80,200,0.14)'}}/>
@@ -506,31 +510,77 @@ function Notebook3D() {
                   {/* Trackpad */}
                   <div
                     onPointerDown={e=>{e.preventDefault();e.stopPropagation();handleKeyAction('↵')}}
-                    style={{width:'clamp(80px, 27vw, 120px)',height:'clamp(46px, 16vw, 70px)',borderRadius:'6px',background:'rgba(255,255,255,0.025)',border:'0.5px solid rgba(168,85,247,0.1)',position:'absolute',bottom:'20px',left:'50%',transform:'translateX(-50%)',cursor:'pointer',touchAction:'none'}}
+                    style={{
+                      width:'clamp(80px, 27vw, 120px)', height:'clamp(46px, 16vw, 70px)',
+                      borderRadius:'6px', background:'rgba(255,255,255,0.025)',
+                      border:'0.5px solid rgba(168,85,247,0.1)',
+                      position:'absolute', bottom:'20px', left:'50%', transform:'translateX(-50%)',
+                      cursor:'pointer', touchAction:'none',
+                    }}
                   />
                   {/* Brand */}
-                  <div style={{position:'absolute',bottom:'8px',left:'50%',transform:'translateX(-50%)',fontSize:'clamp(6px, 2vw, 9px)',color:'rgba(168,85,247,0.28)',letterSpacing:'clamp(2px, 1vw, 4px)',fontFamily:'monospace',whiteSpace:'nowrap'}}>CAMILLY</div>
+                  <div style={{
+                    position:'absolute', bottom:'8px', left:'50%', transform:'translateX(-50%)',
+                    fontSize:'clamp(6px, 2vw, 9px)', color:'rgba(168,85,247,0.28)',
+                    letterSpacing:'clamp(2px, 1vw, 4px)', fontFamily:'monospace', whiteSpace:'nowrap',
+                  }}>CAMILLY</div>
                 </div>
               </div>
+
+              {/* ─── BASE TRASEIRA — corpo limpo sem teclas ─── */}
+              <div style={{
+                width:'440px', height:'150px', position:'absolute', bottom:0, left:0,
+                transform: 'rotateY(180deg)',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+              }}>
+                {/* Área onde ficaria o teclado — lisa */}
+                <div style={{
+                  width:'440px', height:'34px',
+                  background:'linear-gradient(180deg,#0e0c1e 0%,#0a0818 100%)',
+                  border:'1px solid rgba(100,80,200,0.1)',
+                  borderBottom:'none', borderRadius:'3px 3px 0 0',
+                }}/>
+                {/* Base body traseira */}
+                <div style={{
+                  width:'440px', height:'116px',
+                  background:'linear-gradient(180deg,#0a0818 0%,#080617 100%)',
+                  border:'1px solid rgba(100,80,200,0.1)',
+                  borderTop:'none', borderRadius:'0 0 10px 10px', position:'relative',
+                }}>
+                  {/* Vents traseiros */}
+                  <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'clamp(2px, 1vw, 4px)'}}>
+                    {Array.from({length:7}).map((_,i)=>(
+                      <div key={i} style={{width:'clamp(16px, 5vw, 22px)',height:'3px',borderRadius:'1.5px',background:'rgba(100,80,200,0.08)'}}/>
+                    ))}
+                  </div>
+                  {/* Área do trackpad — lisa, sem interação */}
+                  <div style={{
+                    width:'clamp(80px, 27vw, 120px)', height:'clamp(46px, 16vw, 70px)',
+                    borderRadius:'6px', background:'rgba(255,255,255,0.012)',
+                    border:'0.5px solid rgba(168,85,247,0.06)',
+                    position:'absolute', bottom:'20px', left:'50%', transform:'translateX(-50%)',
+                  }}/>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
       </div>
 
-      {/* Ground shadow responsiva */}
+      {/* Ground shadow */}
       <div style={{width:'min(55%, 280px)',height:'16px',background:'radial-gradient(ellipse at center,rgba(100,60,220,0.18) 0%,transparent 70%)',borderRadius:'50%',marginTop:'2px'}}/>
 
-      {/* Status pill responsivo */}
+      {/* Status pill */}
       <motion.div
         initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:1.3,duration:0.5}}
-        className="responsive-pill"
         style={{
           background:'rgba(8,6,20,0.88)',
           border:'1px solid rgba(168,85,247,0.16)',
           borderRadius:'999px',
           padding:'clamp(4px, 1.5vw, 6px) clamp(12px, 4vw, 16px)',
-          display:'flex',
-          alignItems:'center',
+          display:'flex', alignItems:'center',
           gap:'clamp(4px, 2vw, 8px)',
           fontSize:'clamp(9px, 3vw, 11px)',
           fontFamily:'monospace',
@@ -567,80 +617,35 @@ function Notebook3D() {
       )}
 
       <p className="text-xs text-muted-foreground/40 mt-2 font-mono text-center px-2">
-        {phase==='ask-name'?'clique nas teclas ou use o teclado físico':'arraste para rotacionar · clique nas teclas'}
+        {phase==='ask-name' ? 'clique nas teclas ou use o teclado físico' : 'arraste para girar o notebook'}
       </p>
 
-      {/* Responsive styles */}
       <style jsx>{`
-        .notebook-shell {
-          width: 100%;
-          max-width: 440px;
-          position: relative;
-          margin: 0 auto;
-        }
-        
-        .notebook-inner {
-          width: 440px;
-          height: 420px;
-          transform-origin: top center;
-          transition: transform 0.3s ease;
-        }
-        
-        /* Responsive breakpoints */
+        .notebook-shell { width: 100%; max-width: 440px; position: relative; margin: 0 auto; }
+        .notebook-inner { width: 440px; height: 420px; transform-origin: top center; }
         @media (max-width: 360px) {
           .notebook-shell { max-width: 100%; }
-          .notebook-inner { 
-            transform: scale(0.52); 
-            margin-bottom: -180px;
-          }
+          .notebook-inner { transform: scale(0.52); margin-bottom: -180px; }
         }
-        
         @media (min-width: 361px) and (max-width: 479px) {
           .notebook-shell { max-width: 100%; }
-          .notebook-inner { 
-            transform: scale(0.6); 
-            margin-bottom: -160px;
-          }
+          .notebook-inner { transform: scale(0.6); margin-bottom: -160px; }
         }
-        
         @media (min-width: 480px) and (max-width: 639px) {
-          .notebook-inner { 
-            transform: scale(0.72); 
-            margin-bottom: -110px;
-          }
+          .notebook-inner { transform: scale(0.72); margin-bottom: -110px; }
         }
-        
         @media (min-width: 640px) and (max-width: 767px) {
-          .notebook-inner { 
-            transform: scale(0.85); 
-            margin-bottom: -60px;
-          }
+          .notebook-inner { transform: scale(0.85); margin-bottom: -60px; }
         }
-        
         @media (min-width: 768px) {
-          .notebook-inner { 
-            transform: scale(1); 
-            margin-bottom: 0;
-          }
-        }
-        
-        /* Key buttons responsive */
-        .key-button {
-          transition: background 0.06s, transform 0.06s, box-shadow 0.06s;
-        }
-        
-        /* Responsive pill text */
-        @media (max-width: 480px) {
-          .responsive-pill span {
-            font-size: 9px;
-          }
+          .notebook-inner { transform: scale(1); margin-bottom: 0; }
         }
       `}</style>
     </div>
   )
 }
 
-// ─── About Section Responsiva ─────────────────────────────────────────────────
+// ─── About Section ─────────────────────────────────────────────────────────────
 export function AboutSection() {
   const containerRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(containerRef, { once: true, amount: 0.15 })
@@ -652,7 +657,6 @@ export function AboutSection() {
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.utils.toArray<HTMLElement>('.stat-value').forEach(el => {
-        const target = parseInt(el.dataset.target ?? '0', 10)
         gsap.from(el, {
           textContent: 0, duration: 2, ease: 'power2.out',
           scrollTrigger: { trigger: el, start: 'top 82%' },
@@ -666,22 +670,20 @@ export function AboutSection() {
 
   return (
     <section id="about" className="py-16 sm:py-24 md:py-32 lg:py-48 relative overflow-hidden">
-      {/* Background orbs responsivos */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
-          className="absolute top-1/2 left-0 w-[300px] sm:w-[400px] md:w-[600px] h-[300px] sm:h-[400px] md:h-[600px] bg-accent/5 rounded-full blur-3xl" 
-          animate={{x:[-100,0,-100],opacity:[0.2,0.4,0.2]}} 
+        <motion.div
+          className="absolute top-1/2 left-0 w-[300px] sm:w-[400px] md:w-[600px] h-[300px] sm:h-[400px] md:h-[600px] bg-accent/5 rounded-full blur-3xl"
+          animate={{x:[-100,0,-100],opacity:[0.2,0.4,0.2]}}
           transition={{duration:14,repeat:Infinity,ease:'easeInOut'}}
         />
-        <motion.div 
-          className="absolute bottom-0 right-0 w-[250px] sm:w-[350px] md:w-[400px] h-[250px] sm:h-[350px] md:h-[400px] bg-primary/5 rounded-full blur-3xl" 
-          animate={{y:[0,-50,0],opacity:[0.2,0.4,0.2]}} 
+        <motion.div
+          className="absolute bottom-0 right-0 w-[250px] sm:w-[350px] md:w-[400px] h-[250px] sm:h-[350px] md:h-[400px] bg-primary/5 rounded-full blur-3xl"
+          animate={{y:[0,-50,0],opacity:[0.2,0.4,0.2]}}
           transition={{duration:11,repeat:Infinity,ease:'easeInOut'}}
         />
       </div>
 
       <div ref={containerRef} className="container mx-auto px-4 sm:px-6 relative z-10">
-        {/* Section header responsivo */}
         <motion.div
           initial={{opacity:0,y:50}}
           animate={isInView?{opacity:1,y:0}:{}}
@@ -708,12 +710,11 @@ export function AboutSection() {
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 xl:gap-24 items-center">
-          {/* Notebook column responsivo */}
           <motion.div style={{y:imageY}} className="relative">
-            <motion.div 
-              initial={{opacity:0,scale:0.88}} 
-              animate={isInView?{opacity:1,scale:1}:{}} 
-              transition={{duration:0.9,delay:0.2}} 
+            <motion.div
+              initial={{opacity:0,scale:0.88}}
+              animate={isInView?{opacity:1,scale:1}:{}}
+              transition={{duration:0.9,delay:0.2}}
               className="relative rounded-2xl overflow-visible"
               style={{minHeight:'min(440px, 70vw)'}}
             >
@@ -725,54 +726,48 @@ export function AboutSection() {
                 backgroundImage:'radial-gradient(rgba(168,85,247,0.1) 1px,transparent 1px)',
                 backgroundSize:'24px 24px'
               }}/>
-              <motion.div 
-                initial={{opacity:0,y:-10}} 
-                animate={isInView?{opacity:1,y:0}:{}} 
-                transition={{delay:0.7,duration:0.5}} 
+              <motion.div
+                initial={{opacity:0,y:-10}}
+                animate={isInView?{opacity:1,y:0}:{}}
+                transition={{delay:0.7,duration:0.5}}
                 className="absolute top-2 sm:top-3 md:top-4 left-2 sm:left-3 md:left-4 z-10"
                 style={{
                   background:'rgba(10,8,24,0.92)',
                   border:'1px solid rgba(255,255,255,0.07)',
-                  borderRadius:'8px',
-                  padding:'4px 8px sm:5px 12px',
-                  fontFamily:'monospace',
-                  fontSize:'clamp(9px, 3vw, 11px)',
-                  display:'flex',
-                  alignItems:'center',
-                  gap:'4px sm:6px'
+                  borderRadius:'8px', padding:'4px 8px',
+                  fontFamily:'monospace', fontSize:'clamp(9px, 3vw, 11px)',
+                  display:'flex', alignItems:'center', gap:'6px',
                 }}
               >
-                <span style={{color:'#f87171', fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
-                <span style={{color:'#fbbf24', fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
-                <span style={{color:'#4ade80', fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
-                <span style={{color:'rgba(255,255,255,0.3)',marginLeft:'4px', fontSize:'clamp(8px, 2.5vw, 11px)'}}>camilly.tsx</span>
+                <span style={{color:'#f87171',fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
+                <span style={{color:'#fbbf24',fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
+                <span style={{color:'#4ade80',fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
+                <span style={{color:'rgba(255,255,255,0.3)',marginLeft:'4px',fontSize:'clamp(8px, 2.5vw, 11px)'}}>camilly.tsx</span>
               </motion.div>
               <div className="relative z-10 pt-4 sm:pt-5 md:pt-6 px-1 sm:px-3 md:px-4">
                 <Notebook3D />
               </div>
             </motion.div>
-            
-            {/* Decorative corners responsivos */}
-            <motion.div 
-              initial={{opacity:0,scale:0}} 
-              animate={isInView?{opacity:1,scale:1}:{}} 
-              transition={{duration:0.6,delay:0.5}} 
+
+            <motion.div
+              initial={{opacity:0,scale:0}}
+              animate={isInView?{opacity:1,scale:1}:{}}
+              transition={{duration:0.6,delay:0.5}}
               className="absolute -top-3 sm:-top-4 md:-top-5 -right-3 sm:-right-4 md:-right-5 w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 border border-primary/20 rounded-xl sm:rounded-2xl pointer-events-none"
             />
-            <motion.div 
-              initial={{opacity:0,scale:0}} 
-              animate={isInView?{opacity:1,scale:1}:{}} 
-              transition={{duration:0.6,delay:0.65}} 
+            <motion.div
+              initial={{opacity:0,scale:0}}
+              animate={isInView?{opacity:1,scale:1}:{}}
+              transition={{duration:0.6,delay:0.65}}
               className="absolute -bottom-3 sm:-bottom-4 md:-bottom-5 -left-3 sm:-left-4 md:-left-5 w-16 sm:w-20 md:w-28 h-16 sm:h-20 md:h-28 border border-accent/20 rounded-xl sm:rounded-2xl pointer-events-none"
             />
           </motion.div>
 
-          {/* Text column responsivo */}
           <motion.div style={{y:contentY}} className="space-y-6 sm:space-y-7 md:space-y-8">
-            <motion.div 
-              initial={{opacity:0,y:30}} 
-              animate={isInView?{opacity:1,y:0}:{}} 
-              transition={{duration:0.8,delay:0.3}} 
+            <motion.div
+              initial={{opacity:0,y:30}}
+              animate={isInView?{opacity:1,y:0}:{}}
+              transition={{duration:0.8,delay:0.3}}
               className="space-y-4 sm:space-y-5 md:space-y-6"
             >
               <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed">
@@ -796,24 +791,23 @@ export function AboutSection() {
               </p>
             </motion.div>
 
-            {/* Stats grid responsivo */}
-            <motion.div 
-              initial={{opacity:0,y:30}} 
-              animate={isInView?{opacity:1,y:0}:{}} 
-              transition={{duration:0.8,delay:0.5}} 
+            <motion.div
+              initial={{opacity:0,y:30}}
+              animate={isInView?{opacity:1,y:0}:{}}
+              transition={{duration:0.8,delay:0.5}}
               className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 md:gap-6 pt-6 sm:pt-7 md:pt-8 border-t border-border/30"
             >
               {stats.map((stat,index)=>(
-                <motion.div 
-                  key={stat.label} 
-                  initial={{opacity:0,y:20}} 
-                  animate={isInView?{opacity:1,y:0}:{}} 
-                  transition={{duration:0.5,delay:0.6+index*0.1}} 
+                <motion.div
+                  key={stat.label}
+                  initial={{opacity:0,y:20}}
+                  animate={isInView?{opacity:1,y:0}:{}}
+                  transition={{duration:0.5,delay:0.6+index*0.1}}
                   className="text-center md:text-left"
                 >
-                  <motion.div 
-                    className="text-2xl sm:text-3xl md:text-4xl font-bold text-gradient" 
-                    whileHover={{scale:1.08}} 
+                  <motion.div
+                    className="text-2xl sm:text-3xl md:text-4xl font-bold text-gradient"
+                    whileHover={{scale:1.08}}
                     transition={{duration:0.2}}
                   >
                     <span className="stat-value" data-target={stat.value}>{stat.value}</span>
@@ -824,14 +818,11 @@ export function AboutSection() {
               ))}
             </motion.div>
 
-            
-
-            {/* Education badge responsivo */}
-            <motion.div 
-              initial={{opacity:0,y:20}} 
-              animate={isInView?{opacity:1,y:0}:{}} 
-              transition={{duration:0.5,delay:0.8}} 
-              whileHover={{scale:1.02}} 
+            <motion.div
+              initial={{opacity:0,y:20}}
+              animate={isInView?{opacity:1,y:0}:{}}
+              transition={{duration:0.5,delay:0.8}}
+              whileHover={{scale:1.02}}
               className="inline-flex items-center gap-2 sm:gap-3 glass rounded-full px-4 sm:px-5 md:px-6 py-2 sm:py-3"
             >
               <div className="w-6 sm:w-7 md:w-8 h-6 sm:h-7 md:h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -845,14 +836,8 @@ export function AboutSection() {
                 <p className="text-[10px] sm:text-xs text-muted-foreground">Estudante</p>
                 <p className="text-xs sm:text-sm font-medium">IFSP — Tec. Informática para Internet</p>
               </div>
-
-              
-              
             </motion.div>
           </motion.div>
-
-         
-
         </div>
       </div>
     </section>

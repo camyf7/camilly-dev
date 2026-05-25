@@ -1,610 +1,991 @@
-'use client'
+"use client"
 
-import { useRef, useState, useEffect, useCallback } from 'react'
-import { motion, useInView, useScroll, useTransform, useSpring } from 'framer-motion'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  memo,
+} from "react"
+import {
+  motion,
+  useSpring,
+  useTransform,
+  useMotionValue,
+} from "framer-motion"
+import {
+  GraduationCap,
+  Code2,
+  Monitor,
+  Briefcase,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react"
 
-gsap.registerPlugin(ScrollTrigger)
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const journeyData = {
-  education: [
-    {
-      year: '2024 — 2026',
-      title: 'Técnico em Informática para Internet',
-      institution: 'Instituto Federal de São Paulo',
-      shortcode: 'IFSP',
-      status: 'Cursando',
-      description:
-        'Exploração avançada de arquitetura de software, desenvolvimento web e tecnologias emergentes que fundamentam a engenharia de sistemas modernos.',
-      technologies: ['React', 'Node.js', 'Banco de Dados', 'DevOps'],
-      accent: '#a855f7',
-      accentRgb: '168,85,247',
-      index: '01',
-    },
-    {
-      year: '2020 — 2025',
-      title: 'Ensino Médio',
-      institution: 'Colégio Adventista de Caraguatatuba',
-      shortcode: 'CAC',
-      status: 'Concluído',
-      description:
-        'Base sólida em ciências exatas, desenvolvimento do pensamento analítico e fundamentos da lógica computacional.',
-      technologies: ['Matemática', 'Física', 'Lógica', 'Computação'],
-      accent: '#818cf8',
-      accentRgb: '129,140,248',
-      index: '02',
-    },
-  ],
-  certifications: [
-    {
-      year: '2025',
-      title: 'Hackathon Inova Caragua',
-      institution: 'IFSP & Secretaria de Turismo',
-      shortcode: 'Turismo',
-      description:
-        '72 horas de imersão tecnológica para construir soluções inovadoras no setor público e turístico regional.',
-      technologies: ['Inovação', 'Impacto Social', 'Prototipagem Rápida'],
-      accent: '#ec4899',
-      accentRgb: '236,72,153',
-      index: '03',
-    },
-  ],
+interface Milestone {
+  id: string
+  number: string
+  title: string
+  period: string
+  description: string
+  technologies: string[]
+  achievements: string[]
+  icon: LucideIcon
+  color: string
+  accentColor: string
+  col: 0 | 1
 }
 
-// ─── TimelineNode ──────────────────────────────────────────────────────────────
-function TimelineNode({
-  progress,
-  index,
-  accent,
-  accentRgb,
-}: {
-  progress: any
-  index: number
-  accent: string
-  accentRgb: string
-}) {
-  const scale = useTransform(progress, [0.1 + index * 0.05, 0.2 + index * 0.05], [0, 1])
-  const glowScale = useTransform(progress, [0.1 + index * 0.05, 0.2 + index * 0.05], [0.5, 1.5])
-
-  return (
-    <div className="absolute -left-[13px] top-[24px] z-20">
-      <motion.div
-        className="absolute w-[3px] h-[3px] rounded-full"
-        style={{
-          backgroundColor: accent,
-          boxShadow: `0 0 16px ${accent}`,
-          scale,
-        }}
-      />
-      <motion.div
-        className="absolute rounded-full"
-        style={{
-          width: 10,
-          height: 10,
-          left: -3.5,
-          top: -3.5,
-          backgroundColor: `rgba(${accentRgb}, 0.15)`,
-          scale: glowScale,
-        }}
-      />
-    </div>
-  )
+interface Particle {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  r: number
+  a: number
+  phase: number
+  spd: number
+  col: string
 }
 
-// ─── JourneyCard ───────────────────────────────────────────────────────────────
-function JourneyCard({
-  item,
-  type,
-  index,
-  progress,
-}: {
-  item: any
-  type: string
-  index: number
-  progress: any
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, amount: 0.2 })
-  const [isHovered, setIsHovered] = useState(false)
-  const [mouse, setMouse] = useState({ x: 50, y: 50 })
+interface TrailPulse {
+  t: number
+  speed: number
+  size: number
+  alpha: number
+  hue: number
+}
 
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start end', 'end start'],
-  })
-  const yOffset = useTransform(scrollYProgress, [0, 1], [40, -40])
-  const springY = useSpring(yOffset, { stiffness: 60, damping: 20 })
+interface Vec2 {
+  x: number
+  y: number
+}
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    setMouse({
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100,
-    })
-  }, [])
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const MILESTONES: Milestone[] = [
+  {
+    id: "formation",
+    number: "01",
+    title: "Formação & Fundamentos",
+    period: "2020 – 2021",
+    description:
+      "Início da jornada no desenvolvimento web. Lógica de programação, HTML, CSS e os primeiros passos com JavaScript para criar interatividade real nas interfaces.",
+    achievements: ["Primeiro site publicado", "Projeto de conclusão de curso"],
+    technologies: ["HTML5", "CSS3", "JavaScript", "Git"],
+    icon: GraduationCap,
+    color: "#7C3AED",
+    accentColor: "#8B5CF6",
+    col: 0,
+  },
+  {
+    id: "first-projects",
+    number: "02",
+    title: "Primeiros Projetos",
+    period: "2021 – 2022",
+    description:
+      "Projetos reais que consolidaram a base técnica. Interfaces responsivas, integração com APIs e controle de versão. Cada entrega foi um degrau importante na evolução.",
+    achievements: ["5+ projetos entregues", "Primeiro cliente real"],
+    technologies: ["React", "Sass", "REST API", "GitHub"],
+    icon: Code2,
+    color: "#9333EA",
+    accentColor: "#A855F7",
+    col: 1,
+  },
+  {
+    id: "specialization",
+    number: "03",
+    title: "Especialização Front-End",
+    period: "2022 – 2023",
+    description:
+      "Aprofundamento em bibliotecas modernas e arquitetura de interfaces escaláveis. TypeScript, Tailwind CSS e Next.js se tornaram ferramentas do dia a dia.",
+    achievements: ["Certificação React", "Contribuição Open Source"],
+    technologies: ["TypeScript", "Tailwind CSS", "Next.js", "Framer Motion"],
+    icon: Code2,
+    color: "#A855F7",
+    accentColor: "#C084FC",
+    col: 0,
+  },
+  {
+    id: "professional",
+    number: "04",
+    title: "Experiência Profissional",
+    period: "2023 – 2024",
+    description:
+      "Atuação em projetos reais no mercado, colaborando com equipes multidisciplinares e entregando soluções de alto impacto com metodologias ágeis e CI/CD.",
+    achievements: ["3 projetos em produção", "Mentoria de júnior"],
+    technologies: ["Next.js", "Node.js", "Figma", "Jest"],
+    icon: Briefcase,
+    color: "#C026D3",
+    accentColor: "#E879F9",
+    col: 1,
+  },
+  {
+    id: "impact",
+    number: "05",
+    title: "Impacto & Evolução Contínua",
+    period: "Atualmente",
+    description:
+      "Soluções completas com foco em performance, acessibilidade e experiências memoráveis. Interfaces que encantam usuários e resolvem problemas reais.",
+    achievements: ["200k+ usuários impactados", "Feature premiada"],
+    technologies: ["UI/UX Design", "Performance", "A11y", "SEO"],
+    icon: Code2,
+    color: "#D946EF",
+    accentColor: "#F0ABFC",
+    col: 0,
+  },
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function rgba(hex: string, a: number): string {
+  const n = parseInt(hex.replace("#", ""), 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
+}
+
+function catmull(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Vec2 {
+  const t2 = t * t, t3 = t2 * t
+  return {
+    x: 0.5 * (2*p1.x + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+    y: 0.5 * (2*p1.y + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
+  }
+}
+
+function buildSpline(pts: Vec2[], steps = 120): Vec2[] {
+  if (pts.length < 2) return []
+  const out: Vec2[] = []
+  const ext = [pts[0], ...pts, pts[pts.length - 1]]
+  for (let i = 1; i < ext.length - 2; i++) {
+    for (let s = 0; s <= steps; s++) {
+      out.push(catmull(ext[i-1], ext[i], ext[i+1], ext[i+2], s / steps))
+    }
+  }
+  return out
+}
+
+// ─── Background Canvas ────────────────────────────────────────────────────────
+
+const BackgroundCanvas = memo(function BackgroundCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef = useRef<number>(0)
+  const stateRef = useRef<{ particles: Particle[]; w: number; h: number }>({ particles: [], w: 0, h: 0 })
 
   useEffect(() => {
-    if (!ref.current) return
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        ref.current,
-        { y: 60, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          delay: index * 0.12,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: ref.current,
-            start: 'top 88%',
-            toggleActions: 'play none none reverse',
-          },
-        }
-      )
-    }, ref)
-    return () => ctx.revert()
-  }, [index])
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    function resize() {
+      if (!canvas) return
+      canvas.width = canvas.offsetWidth
+      canvas.height = canvas.offsetHeight
+      const { width: W, height: H } = canvas
+      stateRef.current.w = W
+      stateRef.current.h = H
+      stateRef.current.particles = Array.from({ length: 70 }, () => ({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.18,
+        vy: (Math.random() - 0.5) * 0.12,
+        r: Math.random() * 1.8 + 0.4,
+        a: Math.random() * 0.25 + 0.05,
+        phase: Math.random() * Math.PI * 2,
+        spd: Math.random() * 0.03 + 0.015,
+        col: Math.random() > 0.5 ? "139,92,246" : "168,85,247",
+      }))
+    }
+
+    function draw(ts: number) {
+      if (!canvas || !ctx) return
+      const t = ts / 1000
+      const { w: W, h: H, particles } = stateRef.current
+
+      ctx.clearRect(0, 0, W, H)
+
+      ctx.fillStyle = "#050311"
+      ctx.fillRect(0, 0, W, H)
+
+      const blobs: [number, number, number, string][] = [
+        [W * 0.15, H * 0.15, W * 0.5, "rgba(109,40,217,0.07)"],
+        [W * 0.85, H * 0.82, W * 0.42, "rgba(147,51,234,0.05)"],
+        [W * 0.5, H * 0.5, W * 0.35, "rgba(168,85,247,0.04)"],
+      ]
+      blobs.forEach(([bx, by, br, color]) => {
+        const g = ctx.createRadialGradient(bx, by, 0, bx, by, br)
+        g.addColorStop(0, color)
+        g.addColorStop(1, "transparent")
+        ctx.fillStyle = g
+        ctx.fillRect(0, 0, W, H)
+      })
+
+      ctx.strokeStyle = "rgba(139,92,246,0.028)"
+      ctx.lineWidth = 0.5
+      const gs = 56
+      for (let x = 0; x < W; x += gs) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke()
+      }
+      for (let y = 0; y < H; y += gs) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
+      }
+
+      particles.forEach(p => {
+        p.x = (p.x + p.vx + W) % W
+        p.y = (p.y + p.vy + H) % H
+        const alpha = p.a * (0.4 + 0.6 * Math.sin(t * p.spd * 60 + p.phase))
+        const gp = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4)
+        gp.addColorStop(0, `rgba(${p.col},${alpha + 0.04})`)
+        gp.addColorStop(1, "transparent")
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2)
+        ctx.fillStyle = gp
+        ctx.fill()
+      })
+
+      rafRef.current = requestAnimationFrame(draw)
+    }
+
+    resize()
+    rafRef.current = requestAnimationFrame(draw)
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+    return () => { cancelAnimationFrame(rafRef.current); ro.disconnect() }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ zIndex: 0 }}
+    />
+  )
+})
+
+// ─── Energy Trail Canvas ──────────────────────────────────────────────────────
+
+interface TrailCanvasProps {
+  cardRefs: React.RefObject<HTMLDivElement | null>[]
+  activeIndex: number | null
+  isReady: boolean
+}
+
+const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }: TrailCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const splineRef = useRef<Vec2[]>([])
+  const lastLayoutRef = useRef("")
+  const pulsesRef = useRef<TrailPulse[]>([
+    { t: 0.05, speed: 0.0022, size: 8,  alpha: 1.0,  hue: 0 },
+    { t: 0.38, speed: 0.0017, size: 5.5, alpha: 0.75, hue: 30 },
+    { t: 0.62, speed: 0.0025, size: 4,  alpha: 0.55, hue: 60 },
+    { t: 0.82, speed: 0.0019, size: 3.5, alpha: 0.45, hue: 90 },
+  ])
+  
+  const getCenters = useCallback((): Vec2[] => {
+    const canvas = canvasRef.current
+    if (!canvas) return []
+
+    const canvasRect = canvas.getBoundingClientRect()
+    const centers: Vec2[] = []
+
+    for (const ref of cardRefs) {
+      if (!ref.current) continue
+      
+      const r = ref.current.getBoundingClientRect()
+      
+      // CORREÇÃO: Ignora elementos escondidos (width/height 0)
+      if (r.width === 0 || r.height === 0) continue
+      
+      centers.push({
+        x: r.left - canvasRect.left + r.width / 2,
+        y: r.top - canvasRect.top + r.height / 2,
+      })
+    }
+
+    return centers
+  }, [cardRefs])
+
+  const draw = useCallback((ts: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const t = ts / 1000
+    
+    // Sincroniza tamanho do canvas com o pai
+    const parent = canvas.parentElement
+    if (parent) {
+      const pr = parent.getBoundingClientRect()
+      if (canvas.width !== Math.round(pr.width) || canvas.height !== Math.round(pr.height)) {
+        canvas.width = Math.round(pr.width)
+        canvas.height = Math.round(pr.height)
+      }
+    }
+
+    const centers = getCenters()
+    
+    // Só desenha se tiver pelo menos 2 cards visíveis
+    if (centers.length >= 2) {
+      const key = centers.map(c => `${Math.round(c.x)},${Math.round(c.y)}`).join("|")
+      if (key !== lastLayoutRef.current) {
+        lastLayoutRef.current = key
+        splineRef.current = buildSpline(centers, 140)
+      }
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
+    // Se não tiver spline ou não estiver ready, não desenha nada
+    if (!isReady || splineRef.current.length < 2) {
+      return
+    }
+    
+    const pts = splineRef.current
+    const n = pts.length
+    const isActive = activeIndex !== null
+
+    // ── Outermost atmospheric glow ──
+    ctx.save()
+    ctx.beginPath()
+    ctx.moveTo(pts[0].x, pts[0].y)
+    for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    const atmoGrad = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[n-1].x, pts[n-1].y)
+    atmoGrad.addColorStop(0,   "rgba(109,40,217,0)")
+    atmoGrad.addColorStop(0.15,"rgba(124,58,237,0.15)")
+    atmoGrad.addColorStop(0.4, "rgba(147,51,234,0.20)")
+    atmoGrad.addColorStop(0.65,"rgba(168,85,247,0.18)")
+    atmoGrad.addColorStop(0.85,"rgba(192,132,252,0.14)")
+    atmoGrad.addColorStop(1,   "rgba(217,70,239,0)")
+    ctx.strokeStyle = atmoGrad
+    ctx.lineWidth = isActive ? 44 : 38
+    ctx.globalAlpha = isActive ? 0.55 : 0.38
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+    ctx.stroke()
+
+    // ── Middle glow ──
+    ctx.beginPath()
+    ctx.moveTo(pts[0].x, pts[0].y)
+    for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    ctx.strokeStyle = atmoGrad
+    ctx.lineWidth = isActive ? 20 : 16
+    ctx.globalAlpha = isActive ? 0.72 : 0.55
+    ctx.stroke()
+
+    // ── 3D tubular body ──
+    ctx.globalAlpha = 1
+    for (let i = 0; i < n - 1; i += 1) {
+      const p = pts[i]
+      const q = pts[Math.min(i + 1, n - 1)]
+      const prog = i / n
+
+      const breathe = 1 + 0.12 * Math.sin(i * 0.07 + t * 1.8)
+      const baseThick = isActive ? 7.5 : 6
+      const thick = (baseThick + Math.sin(i * 0.06) * 0.8) * breathe
+
+      const r = Math.round(124 + (217 - 124) * prog)
+      const g = Math.round(58  + (70  - 58)  * prog)
+      const b = Math.round(237 + (239 - 237) * prog)
+
+      // Deep shadow layer
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y + 2.5)
+      ctx.lineTo(q.x, q.y + 2.5)
+      ctx.strokeStyle = "rgba(10,0,30,0.7)"
+      ctx.lineWidth = thick + 3.5
+      ctx.lineCap = "round"
+      ctx.stroke()
+
+      // Mid-tone shadow
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y + 1)
+      ctx.lineTo(q.x, q.y + 1)
+      ctx.strokeStyle = "rgba(30,0,60,0.5)"
+      ctx.lineWidth = thick + 1.5
+      ctx.stroke()
+
+      // Main body
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y)
+      ctx.lineTo(q.x, q.y)
+      ctx.strokeStyle = `rgba(${r},${g},${b},${isActive ? 0.95 : 0.85})`
+      ctx.lineWidth = thick
+      ctx.stroke()
+
+      // Upper specular highlight
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y - thick * 0.22)
+      ctx.lineTo(q.x, q.y - thick * 0.22)
+      ctx.strokeStyle = "rgba(200,160,255,0.28)"
+      ctx.lineWidth = thick * 0.28
+      ctx.stroke()
+
+      // Top bright highlight
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y - thick * 0.3)
+      ctx.lineTo(q.x, q.y - thick * 0.3)
+      ctx.strokeStyle = "rgba(255,240,255,0.12)"
+      ctx.lineWidth = thick * 0.12
+      ctx.stroke()
+    }
+
+    // ── Traveling energy pulses ──
+    pulsesRef.current.forEach(pulse => {
+      pulse.t += pulse.speed * (isActive ? 1.55 : 1)
+      if (pulse.t > 1) pulse.t -= 1
+
+      const idx = Math.min(Math.floor(pulse.t * (n - 1)), n - 1)
+      const pt = pts[idx]
+
+      const cr1 = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pulse.size * 5)
+      cr1.addColorStop(0,   `rgba(230,180,255,${pulse.alpha * 0.55})`)
+      cr1.addColorStop(0.4, `rgba(180,100,255,${pulse.alpha * 0.28})`)
+      cr1.addColorStop(1,   "transparent")
+      ctx.beginPath()
+      ctx.arc(pt.x, pt.y, pulse.size * 5, 0, Math.PI * 2)
+      ctx.fillStyle = cr1
+      ctx.globalAlpha = 0.9
+      ctx.fill()
+
+      const cr2 = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pulse.size * 2)
+      cr2.addColorStop(0,   `rgba(255,220,255,${pulse.alpha})`)
+      cr2.addColorStop(0.5, `rgba(210,140,255,${pulse.alpha * 0.7})`)
+      cr2.addColorStop(1,   "transparent")
+      ctx.beginPath()
+      ctx.arc(pt.x, pt.y, pulse.size * 2, 0, Math.PI * 2)
+      ctx.fillStyle = cr2
+      ctx.globalAlpha = 1
+      ctx.fill()
+
+      ctx.beginPath()
+      ctx.arc(pt.x, pt.y, pulse.size * 0.5, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255,248,255,${pulse.alpha})`
+      ctx.globalAlpha = 1
+      ctx.fill()
+    })
+
+    // ── Node connectors at each card center ──
+    centers.forEach((pt, i) => {
+      const prog = i / Math.max(centers.length - 1, 1)
+      const isHovered = activeIndex === i
+      const nodePulse = 0.65 + 0.35 * Math.sin(t * 1.6 + i * 1.4)
+      const r = Math.round(124 + (217 - 124) * prog)
+      const g = Math.round(58  + (70  - 58)  * prog)
+      const b = Math.round(237 + (239 - 237) * prog)
+
+      if (isHovered) {
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, 26 + 4 * Math.sin(t * 3), 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(${r},${g},${b},0.2)`
+        ctx.lineWidth = 1
+        ctx.globalAlpha = 1
+        ctx.stroke()
+      }
+
+      ctx.beginPath()
+      ctx.arc(pt.x, pt.y, (isHovered ? 18 : 14) * nodePulse, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(${r},${g},${b},${isHovered ? 0.5 : 0.28})`
+      ctx.lineWidth = isHovered ? 1.5 : 1
+      ctx.globalAlpha = 1
+      ctx.stroke()
+
+      const ng = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, isHovered ? 20 : 16)
+      ng.addColorStop(0, `rgba(${r},${g},${b},${isHovered ? 0.65 : 0.45})`)
+      ng.addColorStop(1, "transparent")
+      ctx.beginPath()
+      ctx.arc(pt.x, pt.y, isHovered ? 20 : 16, 0, Math.PI * 2)
+      ctx.fillStyle = ng
+      ctx.fill()
+
+      ctx.beginPath()
+      ctx.arc(pt.x, pt.y, isHovered ? 7 : 5.5, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(${r},${g},${b},1)`
+      ctx.fill()
+
+      ctx.beginPath()
+      ctx.arc(pt.x, pt.y, isHovered ? 3 : 2, 0, Math.PI * 2)
+      ctx.fillStyle = "rgba(255,255,255,0.95)"
+      ctx.fill()
+    })
+
+    ctx.restore()
+  }, [getCenters, activeIndex, isReady])
+
+  // CORREÇÃO: ÚNICO loop de animação
+  const drawRef = useRef(draw)
+  
+  useEffect(() => {
+    drawRef.current = draw
+  }, [draw])
+
+  useEffect(() => {
+    let frame: number
+    let mounted = true
+
+    const animate = (t: number) => {
+      if (!mounted) return
+      drawRef.current(t)
+      frame = requestAnimationFrame(animate)
+    }
+
+    frame = requestAnimationFrame(animate)
+
+    return () => {
+      mounted = false
+      cancelAnimationFrame(frame)
+    }
+  }, []) // Array vazio - executa apenas uma vez
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ zIndex: 1 }}
+    />
+  )
+})
+
+// ─── Journey Card ─────────────────────────────────────────────────────────────
+
+interface CardProps {
+  milestone: Milestone
+  index: number
+  cardId: string
+  cardRef: React.RefObject<HTMLDivElement | null>
+  onHoverChange: (index: number | null) => void
+  onVisible: (id: string) => void
+}
+
+const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRef, onHoverChange, onVisible }: CardProps) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [hovered, setHovered] = useState(false)
+  const visibleRef = useRef(false)
+
+  const mx = useMotionValue(0)
+  const my = useMotionValue(0)
+  const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [8, -8]), { stiffness: 300, damping: 30 })
+  const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-8, 8]), { stiffness: 300, damping: 30 })
+  const shine = useTransform(
+    [mx, my] as any,
+    ([lx, ly]: number[]) =>
+      `radial-gradient(ellipse at ${(lx + 0.5) * 100}% ${(ly + 0.5) * 100}%, ${rgba(milestone.accentColor, 0.18)} 0%, transparent 60%)`
+  )
+
+  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!wrapRef.current) return
+    const r = wrapRef.current.getBoundingClientRect()
+    mx.set((e.clientX - r.left) / r.width - 0.5)
+    my.set((e.clientY - r.top) / r.height - 0.5)
+  }, [mx, my])
+
+  const onEnter = useCallback(() => {
+    setHovered(true)
+    onHoverChange(index)
+  }, [index, onHoverChange])
+
+  const onLeave = useCallback(() => {
+    mx.set(0); my.set(0)
+    setHovered(false)
+    onHoverChange(null)
+  }, [mx, my, onHoverChange])
+
+  const handleViewportEnter = useCallback(() => {
+    if (visibleRef.current) return
+    visibleRef.current = true
+    onVisible(cardId)
+  }, [cardId, onVisible])
+
+  const Icon = milestone.icon
+  const c = milestone.accentColor
 
   return (
     <motion.div
-      ref={ref}
-      style={{ y: springY }}
-      className="relative mb-10 last:mb-0"
+      ref={cardRef}
+      className="mb-6 relative"
+      initial={{ opacity: 0, y: 56 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      onViewportEnter={handleViewportEnter}
+      transition={{ duration: 0.7, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+      style={{ zIndex: hovered ? 10 : 2 }}
     >
-      <TimelineNode progress={progress} index={index} accent={item.accent} accentRgb={item.accentRgb} />
-
-      <div className="pl-8">
+      <div style={{ perspective: 1200 }}>
         <motion.div
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          onMouseMove={handleMouseMove}
-          className="relative group cursor-pointer rounded-2xl overflow-hidden"
-          whileHover={{ y: -3 }}
-          transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+          className="relative rounded-2xl overflow-hidden"
+          style={{
+            rotateX,
+            rotateY,
+            transformStyle: "preserve-3d",
+          }}
+          onMouseMove={onMove}
+          onMouseEnter={onEnter}
+          onMouseLeave={onLeave}
+          whileHover={{ z: 24, scale: 1.015 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          role="article"
+          aria-label={`Etapa ${milestone.number}: ${milestone.title}, ${milestone.period}`}
         >
-          {/* Base gradient */}
           <div
             className="absolute inset-0 rounded-2xl"
             style={{
-              background: `radial-gradient(ellipse at 60% 40%, rgba(${item.accentRgb},0.08) 0%, rgba(7,6,26,0.95) 65%)`,
-              border: `1px solid rgba(${item.accentRgb},0.1)`,
+              background: "rgba(8,6,20,0.82)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              border: `1px solid ${hovered ? rgba(c, 0.45) : rgba(c, 0.16)}`,
+              boxShadow: hovered
+                ? `0 20px 60px rgba(0,0,0,0.5), 0 0 60px ${rgba(c, 0.14)}, inset 0 1px 0 rgba(255,255,255,0.07)`
+                : "0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)",
+              transition: "border-color 0.3s, box-shadow 0.35s",
             }}
           />
 
-          {/* Dot grid */}
+          <motion.div
+            className="absolute inset-0 rounded-2xl pointer-events-none"
+            style={{ background: shine, zIndex: 0 }}
+          />
+
           <div
-            className="absolute inset-0 rounded-2xl"
+            className="absolute inset-0 rounded-2xl pointer-events-none"
             style={{
-              backgroundImage: `radial-gradient(rgba(${item.accentRgb},0.05) 1px, transparent 1px)`,
-              backgroundSize: '22px 22px',
+              background: "linear-gradient(135deg, rgba(255,255,255,0.055) 0%, transparent 50%)",
+              zIndex: 0,
             }}
           />
 
-          {/* Content */}
-          <div className="relative p-6 z-10">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <span
-                    className="text-xs tracking-widest uppercase font-mono"
-                    style={{ color: item.accent }}
-                  >
-                    {item.year}
-                  </span>
-                  <div
-                    className="w-8 h-px"
-                    style={{ background: `rgba(${item.accentRgb},0.3)` }}
-                  />
-                  <span
-                    className="text-xs font-mono"
-                    style={{ color: `rgba(${item.accentRgb},0.45)` }}
-                  >
-                    {item.index}
-                  </span>
-                </div>
+          <div
+            className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
+            style={{
+              background: `linear-gradient(90deg, transparent 0%, ${rgba(c, 0.5)} 20%, ${c} 50%, ${rgba(c, 0.5)} 80%, transparent 100%)`,
+              zIndex: 2,
+              opacity: hovered ? 1 : 0.7,
+              transition: "opacity 0.3s",
+            }}
+          />
 
-                <h3
-                  className="text-xl font-bold tracking-tight mb-1"
-                  style={{ color: '#e6edf3' }}
-                >
-                  {item.title}
-                </h3>
+          <div
+            className="absolute -top-3 -right-1 select-none pointer-events-none font-black"
+            style={{
+              fontSize: 100,
+              lineHeight: 1,
+              letterSpacing: "-0.06em",
+              color: c,
+              opacity: hovered ? 0.1 : 0.05,
+              transition: "opacity 0.3s",
+              zIndex: 1,
+            }}
+            aria-hidden="true"
+          >
+            {milestone.number}
+          </div>
 
-                <p
-                  className="text-sm font-mono tracking-wider"
-                  style={{ color: `rgba(${item.accentRgb},0.6)` }}
-                >
-                  {item.institution}
-                </p>
+          <div className="relative p-6 lg:p-7" style={{ zIndex: 3 }}>
+            <div className="flex items-start justify-between gap-3 mb-5">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: rgba(c, 0.12),
+                  border: `1px solid ${rgba(c, 0.3)}`,
+                  boxShadow: hovered ? `0 0 20px ${rgba(c, 0.2)}` : "none",
+                  transition: "box-shadow 0.3s",
+                }}
+              >
+                <Icon
+                  className="w-[22px] h-[22px]"
+                  style={{ color: c }}
+                  aria-hidden="true"
+                />
               </div>
-
-              {item.status && (
-                <span
-                  className="px-2.5 py-1 rounded-full text-[10px] font-mono tracking-wider uppercase"
-                  style={{
-                    background: `rgba(${item.accentRgb},0.1)`,
-                    border: `1px solid rgba(${item.accentRgb},0.2)`,
-                    color: item.accent,
-                  }}
-                >
-                  {item.status}
-                </span>
-              )}
+              <span
+                className="text-[10px] font-mono tracking-widest px-3 py-1.5 rounded-full flex-shrink-0"
+                style={{
+                  background: rgba(c, 0.1),
+                  color: c,
+                  border: `1px solid ${rgba(c, 0.22)}`,
+                  letterSpacing: "0.08em",
+                }}
+              >
+                {milestone.period}
+              </span>
             </div>
 
             <p
-              className="text-sm leading-relaxed mb-4"
-              style={{ color: 'rgba(200,200,220,0.6)' }}
+              className="text-[10px] font-black tracking-[0.22em] uppercase mb-1.5"
+              style={{ color: rgba(c, 0.8) }}
             >
-              {item.description}
+              Etapa {milestone.number}
             </p>
 
-            {item.technologies && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: `rgba(${item.accentRgb},0.08)` }}>
-                {item.technologies.map((tech: string) => (
-                  <span
-                    key={tech}
-                    className="text-[10px] font-mono tracking-wide px-2 py-0.5 rounded"
-                    style={{
-                      background: `rgba(${item.accentRgb},0.07)`,
-                      border: `1px solid rgba(${item.accentRgb},0.12)`,
-                      color: `rgba(${item.accentRgb},0.7)`,
-                    }}
-                  >
-                    {tech}
-                  </span>
+            <h3
+              className="text-[17px] font-bold leading-snug mb-3 tracking-tight"
+              style={{ color: "#F4F0FF" }}
+            >
+              {milestone.title}
+            </h3>
+
+            <div
+              className="h-px mb-4"
+              style={{ background: `linear-gradient(90deg, ${rgba(c, 0.6)}, ${rgba(c, 0.1)} 70%, transparent)` }}
+            />
+
+            <p className="text-[13px] leading-relaxed mb-4" style={{ color: "#8B8AA8" }}>
+              {milestone.description}
+            </p>
+
+            <div
+              className="rounded-xl p-3.5 mb-4"
+              style={{
+                background: rgba(c, 0.05),
+                border: `1px solid ${rgba(c, 0.1)}`,
+              }}
+            >
+              <p
+                className="text-[10px] font-bold tracking-[0.16em] uppercase mb-2.5"
+                style={{ color: rgba(c, 0.9) }}
+              >
+                Conquistas
+              </p>
+              <div className="space-y-1.5">
+                {milestone.achievements.map((a, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ background: c, boxShadow: `0 0 6px ${rgba(c, 0.6)}` }}
+                    />
+                    <span className="text-[12px]" style={{ color: "#9B9AB8" }}>{a}</span>
+                  </div>
                 ))}
               </div>
-            )}
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {milestone.technologies.map(tech => (
+                <motion.span
+                  key={tech}
+                  className="text-[11px] font-semibold px-2.5 py-[5px] rounded-full cursor-default"
+                  style={{
+                    background: rgba(c, 0.1),
+                    color: c,
+                    border: `1px solid ${rgba(c, 0.22)}`,
+                  }}
+                  whileHover={{
+                    scale: 1.07,
+                    background: rgba(c, 0.2),
+                    borderColor: rgba(c, 0.45),
+                  }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {tech}
+                </motion.span>
+              ))}
+            </div>
           </div>
-
-          {/* Hover spotlight */}
-          <motion.div
-            animate={{ opacity: isHovered ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-0 pointer-events-none rounded-2xl"
-            style={{
-              background: `radial-gradient(380px circle at ${mouse.x}% ${mouse.y}%, rgba(${item.accentRgb},0.08), transparent 55%)`,
-            }}
-          />
-
-          {/* Top accent line */}
-          <motion.div
-            animate={{ opacity: isHovered ? 1 : 0, scaleX: isHovered ? 1 : 0 }}
-            transition={{ duration: 0.4 }}
-            className="absolute top-0 left-0 right-0 h-[1px] rounded-t-2xl origin-left"
-            style={{ background: `linear-gradient(90deg, transparent, ${item.accent}, transparent)` }}
-          />
-
-          {/* Bottom glow line */}
-          <motion.div
-            className="absolute bottom-0 left-0 right-0 h-px origin-right"
-            initial={{ scaleX: 0 }}
-            animate={isHovered ? { scaleX: 1 } : { scaleX: 0 }}
-            transition={{ duration: 0.4 }}
-            style={{ background: `linear-gradient(90deg, transparent, ${item.accent}, transparent)` }}
-          />
         </motion.div>
       </div>
     </motion.div>
   )
-}
+})
 
-// ─── ContinuousLearningCard ────────────────────────────────────────────────────
-function ContinuousLearningCard({ progress }: { progress: any }) {
+// ─── Section Header ────────────────────────────────────────────────────────────
+
+const SectionHeader = memo(function SectionHeader() {
+  const [isInView, setIsInView] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, amount: 0.3 })
-  const [isHovered, setIsHovered] = useState(false)
-  const [mouse, setMouse] = useState({ x: 50, y: 50 })
-  const accent = '#34d399'
-  const accentRgb = '52,211,153'
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    setMouse({
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100,
-    })
-  }, [])
 
   useEffect(() => {
-    if (!ref.current) return
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        ref.current,
-        { y: 60, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.9,
-          delay: 0.4,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: ref.current,
-            start: 'top 88%',
-            toggleActions: 'play none none reverse',
-          },
+    let mounted = true
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!mounted) return
+        if (entry.isIntersecting) {
+          setIsInView(true)
+          observer.disconnect()
         }
-      )
-    }, ref)
-    return () => ctx.revert()
+      },
+      { threshold: 0.2 }
+    )
+
+    const el = ref.current
+    if (el) observer.observe(el)
+
+    return () => {
+      mounted = false
+      if (el) observer.unobserve(el)
+      observer.disconnect()
+    }
   }, [])
 
-  return (
-    <motion.div ref={ref} className="mt-10">
-      <div
-        className="relative group rounded-2xl overflow-hidden cursor-pointer"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onMouseMove={handleMouseMove}
-      >
-        <div
-          className="absolute inset-0 rounded-2xl"
-          style={{
-            background: `radial-gradient(ellipse at 60% 40%, rgba(${accentRgb},0.06) 0%, rgba(7,6,26,0.95) 65%)`,
-            border: `1px solid rgba(${accentRgb},0.1)`,
-          }}
-        />
-
-        <div
-          className="absolute inset-0 rounded-2xl"
-          style={{
-            backgroundImage: `radial-gradient(rgba(${accentRgb},0.04) 1px, transparent 1px)`,
-            backgroundSize: '22px 22px',
-          }}
-        />
-
-        <div className="relative p-6 z-10">
-          <div className="flex items-center gap-3 mb-3">
-            <motion.div
-              className="w-2 h-2 rounded-full"
-              style={{ background: accent }}
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <span
-              className="text-[10px] tracking-[0.2em] uppercase font-mono"
-              style={{ color: `rgba(${accentRgb},0.7)` }}
-            >
-              Em constante evolução
-            </span>
-          </div>
-
-          <h4 className="text-base font-medium mb-2" style={{ color: '#e6edf3' }}>
-            Sempre em aprendizado contínuo
-          </h4>
-
-          <p className="text-sm leading-relaxed" style={{ color: 'rgba(200,200,220,0.5)' }}>
-            Expandindo ativamente meu conhecimento através de cursos especializados,
-            certificações técnicas e projetos práticos que desafiam minha criatividade
-            e capacidade técnica.
-          </p>
-
-          <div className="mt-4 pt-3 border-t flex gap-4 text-[10px] font-mono" style={{ borderColor: `rgba(${accentRgb},0.08)` }}>
-            <span style={{ color: `rgba(${accentRgb},0.5)` }}>+12 Cursos</span>
-            <span style={{ color: `rgba(${accentRgb},0.5)` }}>5 Certificações</span>
-            <span style={{ color: `rgba(${accentRgb},0.5)` }}>20+ Projetos</span>
-          </div>
-        </div>
-
-        <motion.div
-          animate={{ opacity: isHovered ? 1 : 0 }}
-          transition={{ duration: 0.3 }}
-          className="absolute inset-0 pointer-events-none rounded-2xl"
-          style={{
-            background: `radial-gradient(380px circle at ${mouse.x}% ${mouse.y}%, rgba(${accentRgb},0.06), transparent 55%)`,
-          }}
-        />
-      </div>
-    </motion.div>
-  )
-}
-
-// ─── ColumnHeader ──────────────────────────────────────────────────────────────
-function ColumnHeader({
-  label,
-  accent,
-  isInView,
-}: {
-  label: string
-  accent: string
-  isInView: boolean
-}) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      ref={ref}
+      initial={{ opacity: 0, y: 50 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6 }}
-      className="mb-8"
+      transition={{ duration: 0.8 }}
+      className="max-w-3xl mb-12 sm:mb-16 md:mb-20"
     >
-      <span className="text-xs tracking-[0.2em] uppercase font-mono" style={{ color: `rgba(${accent},0.5)` }}>
-        {label}
-      </span>
-      <div className="w-16 h-px mt-2" style={{ background: `rgba(${accent},0.2)` }} />
+      <motion.span
+        initial={{ opacity: 0, x: -20 }}
+        animate={isInView ? { opacity: 1, x: 0 } : {}}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="text-xs sm:text-sm text-primary tracking-widest uppercase font-mono mb-3 sm:mb-4 block"
+      >
+        04 / Jornada
+      </motion.span>
+
+      <motion.h2
+        initial={{ opacity: 0, y: 30 }}
+        animate={isInView ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.8, delay: 0.3 }}
+        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight"
+      >
+        Minha{' '}
+        <span className="text-gradient">trajetória</span>{' '}
+        profissional
+      </motion.h2>
+
+      <motion.p
+        initial={{ opacity: 0, y: 20 }}
+        animate={isInView ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="text-base sm:text-lg text-muted-foreground mt-4 leading-relaxed"
+      >
+        Uma jornada construída com dedicação, curiosidade e paixão por transformar
+        ideias em experiências digitais memoráveis.
+      </motion.p>
     </motion.div>
   )
-}
+})
 
-// ─── JourneySection ────────────────────────────────────────────────────────────
+// ─── Main Export ──────────────────────────────────────────────────────────────
+
 export function JourneySection() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const leftColRef = useRef<HTMLDivElement>(null)
-  const rightColRef = useRef<HTMLDivElement>(null)
-  const isInView = useInView(containerRef, { once: true, amount: 0.06 })
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const [visibleCount, setVisibleCount] = useState(0)
+  const visibleIds = useRef(new Set<string>())
 
-  const leftProgress = useSpring(
-    useScroll({ target: leftColRef, offset: ['start 0.8', 'end 0.2'] }).scrollYProgress,
-    { stiffness: 100, damping: 30, restDelta: 0.001 }
-  )
+  // CORREÇÃO: Refs independentes para desktop e mobile
+  const desktopRefs = useRef<React.RefObject<HTMLDivElement | null>[]>(
+    Array.from({ length: MILESTONES.length }, () =>
+      React.createRef<HTMLDivElement | null>()
+    )
+  ).current
 
-  const rightProgress = useSpring(
-    useScroll({ target: rightColRef, offset: ['start 0.8', 'end 0.2'] }).scrollYProgress,
-    { stiffness: 100, damping: 30, restDelta: 0.001 }
-  )
+  const mobileRefs = useRef<React.RefObject<HTMLDivElement | null>[]>(
+    Array.from({ length: MILESTONES.length }, () =>
+      React.createRef<HTMLDivElement | null>()
+    )
+  ).current
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start end', 'end start'],
-  })
-
-  const bgY = useTransform(scrollYProgress, [0, 1], ['0%', '25%'])
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.journey-header-item',
-        { y: 60, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.9,
-          stagger: 0.12,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: 'top 80%',
-            toggleActions: 'play none none reverse',
-          },
-        }
-      )
-    }, containerRef)
-    return () => ctx.revert()
+  const handleHoverChange = useCallback((index: number | null) => {
+    setActiveIndex(index)
   }, [])
+
+  const handleCardVisible = useCallback((id: string) => {
+    if (visibleIds.current.has(id)) return
+    visibleIds.current.add(id)
+    setVisibleCount(visibleIds.current.size)
+  }, [])
+
+  // Só ativa a trilha quando todos os cards estiverem visíveis
+  const isTrailReady = visibleCount === MILESTONES.length
+
+  const colLeft  = MILESTONES.filter(m => m.col === 0)
+  const colRight = MILESTONES.filter(m => m.col === 1)
 
   return (
     <section
       id="journey"
-      className="py-16 sm:py-24 md:py-32 lg:py-48 relative overflow-hidden"
+      aria-label="Minha trajetória profissional"
+      className="relative min-h-screen py-28 lg:py-36 overflow-hidden"
+      style={{ background: "#050311" }}
     >
-      {/* ── Background orbs ── */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[300px] sm:w-[550px] md:w-[800px] h-[300px] sm:h-[550px] md:h-[800px] rounded-full blur-3xl"
-          style={{ background: 'rgba(168,85,247,0.04)', y: bgY }}
-          animate={{ scale: [1, 1.12, 1], opacity: [0.2, 0.38, 0.2] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute top-1/4 right-0 w-[250px] sm:w-[400px] md:w-[520px] h-[250px] sm:h-[400px] md:h-[520px] rounded-full blur-3xl"
-          style={{ background: 'rgba(236,72,153,0.04)' }}
-          animate={{ x: [0, -40, 0], opacity: [0.15, 0.35, 0.15] }}
-          transition={{ duration: 13, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute top-1/3 left-0 w-[200px] sm:w-[300px] md:w-[400px] h-[200px] sm:h-[300px] md:h-[400px] rounded-full blur-3xl"
-          style={{ background: 'rgba(129,140,248,0.04)' }}
-          animate={{ y: [0, -30, 0], opacity: [0.1, 0.25, 0.1] }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        {/* Dot grid */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: 'radial-gradient(rgba(168,85,247,0.05) 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
-          }}
-        />
-      </div>
+      <BackgroundCanvas />
 
-      <div ref={containerRef} className="container mx-auto px-4 sm:px-6 relative z-10">
-        {/* ── Section header ── */}
-        <div className="mb-20 sm:mb-24 md:mb-32">
-          <motion.span
-            initial={{ opacity: 0, x: -20 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="journey-header-item text-xs sm:text-sm text-primary tracking-widest uppercase font-mono mb-3 sm:mb-4 block"
-          >
-            04 / Jornada
-          </motion.span>
+      <TrailCanvas
+        cardRefs={desktopRefs}
+        activeIndex={activeIndex}
+        isReady={isTrailReady}
+      />
 
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="journey-header-item text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-4 sm:mb-6"
-          >
-            Minha{' '}
-            <span className="text-gradient">
-              trajetória
-            </span>
-          </motion.h2>
+      <div
+        aria-hidden="true"
+        className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none"
+        style={{
+          background: "linear-gradient(to top, #050311 0%, transparent 100%)",
+          zIndex: 2,
+        }}
+      />
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="journey-header-item text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl"
-          >
-            Uma curadoria visual da minha formação acadêmica e conquistas que
-            moldaram minha perspectiva na engenharia de software moderna.
-          </motion.p>
-        </div>
+      <div
+        aria-hidden="true"
+        className="absolute top-0 left-0 right-0 h-24 pointer-events-none"
+        style={{
+          background: "linear-gradient(to bottom, #050311 0%, transparent 100%)",
+          zIndex: 2,
+        }}
+      />
 
-        {/* ── Timeline Grid ── */}
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 xl:gap-24">
-          {/* Left: Education */}
-          <div ref={leftColRef}>
-            <ColumnHeader label="Formação Acadêmica" accent="168,85,247" isInView={isInView} />
-            <div className="relative">
-              {/* Timeline line background */}
-              <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-purple-500/20 via-purple-500/10 to-transparent" />
-              {/* Animated timeline fill */}
-              <motion.div
-                className="absolute left-0 top-0 w-px bg-gradient-to-b from-purple-400 via-purple-500 to-purple-600"
-                style={{ scaleY: leftProgress, transformOrigin: 'top' }}
-              />
+      <div
+        className="relative container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl"
+        style={{ zIndex: 4 }}
+      >
+        <SectionHeader />
 
-              {journeyData.education.map((item, index) => (
+        <div className="hidden lg:grid lg:grid-cols-2 lg:gap-7 xl:gap-10">
+          <div>
+            {colLeft.map(m => {
+              const idx = MILESTONES.findIndex(x => x.id === m.id)
+              return (
                 <JourneyCard
-                  key={item.title}
-                  item={item}
-                  type="education"
-                  index={index}
-                  progress={leftProgress}
+                  key={`desktop-${m.id}`}
+                  milestone={m}
+                  index={idx}
+                  cardId={m.id}
+                  cardRef={desktopRefs[idx]}
+                  onHoverChange={handleHoverChange}
+                  onVisible={handleCardVisible}
                 />
-              ))}
-            </div>
+              )
+            })}
           </div>
 
-          {/* Right: Certifications & Learning */}
-          <div ref={rightColRef}>
-            <ColumnHeader label="Certificações & Conquistas" accent="236,72,153" isInView={isInView} />
-            <div className="relative">
-              <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-purple-500/20 via-purple-500/10 to-transparent" />
-              <motion.div
-                className="absolute left-0 top-0 w-px bg-gradient-to-b from-purple-400 via-purple-500 to-purple-600"
-                style={{ scaleY: rightProgress, transformOrigin: 'top' }}
-              />
-
-              {journeyData.certifications.map((item, index) => (
+          <div className="mt-16">
+            {colRight.map(m => {
+              const idx = MILESTONES.findIndex(x => x.id === m.id)
+              return (
                 <JourneyCard
-                  key={item.title}
-                  item={item}
-                  type="certification"
-                  index={index}
-                  progress={rightProgress}
+                  key={`desktop-${m.id}`}
+                  milestone={m}
+                  index={idx}
+                  cardId={m.id}
+                  cardRef={desktopRefs[idx]}
+                  onHoverChange={handleHoverChange}
+                  onVisible={handleCardVisible}
                 />
-              ))}
-
-              <ContinuousLearningCard progress={rightProgress} />
-            </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* ── Bottom decorative line ── */}
-        <motion.div
-          initial={{ scaleX: 0, opacity: 0 }}
-          animate={isInView ? { scaleX: 1, opacity: 1 } : {}}
-          transition={{ duration: 1.2, delay: 0.8, ease: [0.23, 1, 0.32, 1] }}
-          className="mt-24 sm:mt-28 md:mt-32 h-px origin-left"
-          style={{
-            background: 'linear-gradient(90deg, rgba(168,85,247,0.3), rgba(168,85,247,0.08), transparent)',
-          }}
-        />
+        <div className="lg:hidden space-y-5">
+          {MILESTONES.map((m, i) => (
+            <JourneyCard
+              key={`mobile-${m.id}`}
+              milestone={m}
+              index={i}
+              cardId={m.id}
+              cardRef={mobileRefs[i]}
+              onHoverChange={handleHoverChange}
+              onVisible={handleCardVisible}
+            />
+          ))}
+        </div>
       </div>
     </section>
   )
 }
+
+export default JourneySection
