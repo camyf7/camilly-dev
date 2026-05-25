@@ -312,7 +312,7 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
   // CORREÇÃO 10: Controle de visibilidade para pausar RAF
   const [isVisible, setIsVisible] = useState(false)
   const sectionRef = useRef<HTMLDivElement | null>(null)
-  const rebuildTimeoutRef = useRef<number>()
+  const rebuildTimeoutRef = useRef<number | null>(null)
   
   // CORREÇÃO 5: Rebuild spline apenas em eventos específicos
   const rebuildSpline = useCallback(() => {
@@ -641,12 +641,15 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
   const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [8, -8]), { stiffness: 300, damping: 30 })
   const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-8, 8]), { stiffness: 300, damping: 30 })
   
-  // CORREÇÃO 7: Tipagem correta do useTransform
-  const shine = useTransform<[number, number], string>(
-    [mx, my],
-    ([lx, ly]) =>
-      `radial-gradient(ellipse at ${(lx + 0.5) * 100}% ${(ly + 0.5) * 100}%, ${rgba(milestone.accentColor, 0.18)} 0%, transparent 60%)`
-  )
+  const shine = useTransform(
+  [mx, my],
+  ([lx, ly]) =>
+    `radial-gradient(
+      ellipse at ${(lx + 0.5) * 100}% ${(ly + 0.5) * 100}%,
+      ${rgba(milestone.accentColor, 0.18)} 0%,
+      transparent 60%
+    )`
+)
 
   const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!wrapRef.current) return
