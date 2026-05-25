@@ -641,14 +641,17 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
   const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [8, -8]), { stiffness: 300, damping: 30 })
   const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-8, 8]), { stiffness: 300, damping: 30 })
   
-  const shine = useTransform(
+ const shine = useTransform(
   [mx, my],
-  ([lx, ly]) =>
-    `radial-gradient(
+  (latest: number[]) => {
+    const [lx, ly] = latest
+
+    return `radial-gradient(
       ellipse at ${(lx + 0.5) * 100}% ${(ly + 0.5) * 100}%,
       ${rgba(milestone.accentColor, 0.18)} 0%,
       transparent 60%
     )`
+  }
 )
 
   const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
