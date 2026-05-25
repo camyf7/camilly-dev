@@ -12,13 +12,12 @@ import {
   useSpring,
   useTransform,
   useMotionValue,
+  MotionValue,
 } from "framer-motion"
 import {
   GraduationCap,
   Code2,
-  Monitor,
   Briefcase,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react"
 
@@ -170,7 +169,8 @@ function buildSpline(pts: Vec2[], steps = 120): Vec2[] {
 const BackgroundCanvas = memo(function BackgroundCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
-  const stateRef = useRef<{ particles: Particle[]; w: number; h: number }>({ particles: [], w: 0, h: 0 })
+  const particlesRef = useRef<Particle[]>([])
+  const initializedRef = useRef(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -178,16 +178,12 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    function resize() {
-      if (!canvas) return
-      canvas.width = canvas.offsetWidth
-      canvas.height = canvas.offsetHeight
-      const { width: W, height: H } = canvas
-      stateRef.current.w = W
-      stateRef.current.h = H
-      stateRef.current.particles = Array.from({ length: 70 }, () => ({
-        x: Math.random() * W,
-        y: Math.random() * H,
+    // CORREÇÃO 3: Inicializa partículas apenas uma vez
+    if (!initializedRef.current) {
+      initializedRef.current = true
+      particlesRef.current = Array.from({ length: 70 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
         vx: (Math.random() - 0.5) * 0.18,
         vy: (Math.random() - 0.5) * 0.12,
         r: Math.random() * 1.8 + 0.4,
@@ -198,10 +194,31 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
       }))
     }
 
+    function resize() {
+      if (!canvas) return
+      canvas.width = canvas.offsetWidth
+      canvas.height = canvas.offsetHeight
+      const W = canvas.width
+      const H = canvas.height
+      
+      // CORREÇÃO 3: Ajusta partículas existentes ao invés de recriar
+      particlesRef.current.forEach(p => {
+        p.x = Math.min(p.x, W)
+        p.y = Math.min(p.y, H)
+      })
+    }
+
     function draw(ts: number) {
       if (!canvas || !ctx) return
       const t = ts / 1000
-      const { w: W, h: H, particles } = stateRef.current
+      const W = canvas.width
+      const H = canvas.height
+      const particles = particlesRef.current
+
+      if (W === 0 || H === 0) {
+        rafRef.current = requestAnimationFrame(draw)
+        return
+      }
 
       ctx.clearRect(0, 0, W, H)
 
@@ -231,16 +248,20 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
       }
 
+      // CORREÇÃO 4: Otimização de performance - usar fill simples ao invés de gradient
       particles.forEach(p => {
         p.x = (p.x + p.vx + W) % W
         p.y = (p.y + p.vy + H) % H
         const alpha = p.a * (0.4 + 0.6 * Math.sin(t * p.spd * 60 + p.phase))
-        const gp = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4)
-        gp.addColorStop(0, `rgba(${p.col},${alpha + 0.04})`)
-        gp.addColorStop(1, "transparent")
+        
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2)
-        ctx.fillStyle = gp
+        ctx.fillStyle = `rgba(${p.col},${alpha + 0.04})`
+        ctx.fill()
+        
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(${p.col},${alpha + 0.15})`
         ctx.fill()
       })
 
@@ -249,9 +270,15 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
 
     resize()
     rafRef.current = requestAnimationFrame(draw)
+    
+    // CORREÇÃO 2: Observa o pai ao invés do próprio canvas
     const ro = new ResizeObserver(resize)
-    ro.observe(canvas)
-    return () => { cancelAnimationFrame(rafRef.current); ro.disconnect() }
+    if (canvas.parentElement) ro.observe(canvas.parentElement)
+    
+    return () => { 
+      cancelAnimationFrame(rafRef.current)
+      ro.disconnect()
+    }
   }, [])
 
   return (
@@ -275,7 +302,6 @@ interface TrailCanvasProps {
 const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }: TrailCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const splineRef = useRef<Vec2[]>([])
-  const lastLayoutRef = useRef("")
   const pulsesRef = useRef<TrailPulse[]>([
     { t: 0.05, speed: 0.0022, size: 8,  alpha: 1.0,  hue: 0 },
     { t: 0.38, speed: 0.0017, size: 5.5, alpha: 0.75, hue: 30 },
@@ -283,6 +309,34 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
     { t: 0.82, speed: 0.0019, size: 3.5, alpha: 0.45, hue: 90 },
   ])
   
+  // CORREÇÃO 10: Controle de visibilidade para pausar RAF
+  const [isVisible, setIsVisible] = useState(false)
+  const sectionRef = useRef<HTMLDivElement | null>(null)
+  const rebuildTimeoutRef = useRef<number>()
+  
+  // CORREÇÃO 5: Rebuild spline apenas em eventos específicos
+  const rebuildSpline = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const canvasRect = canvas.getBoundingClientRect()
+    const centers: Vec2[] = []
+
+    for (const ref of cardRefs) {
+      if (!ref.current) continue
+      const r = ref.current.getBoundingClientRect()
+      if (r.width === 0 || r.height === 0) continue
+      centers.push({
+        x: r.left - canvasRect.left + r.width / 2,
+        y: r.top - canvasRect.top + r.height / 2,
+      })
+    }
+
+    if (centers.length >= 2) {
+      splineRef.current = buildSpline(centers, 140)
+    }
+  }, [cardRefs])
+
   const getCenters = useCallback((): Vec2[] => {
     const canvas = canvasRef.current
     if (!canvas) return []
@@ -292,12 +346,8 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
 
     for (const ref of cardRefs) {
       if (!ref.current) continue
-      
       const r = ref.current.getBoundingClientRect()
-      
-      // CORREÇÃO: Ignora elementos escondidos (width/height 0)
       if (r.width === 0 || r.height === 0) continue
-      
       centers.push({
         x: r.left - canvasRect.left + r.width / 2,
         y: r.top - canvasRect.top + r.height / 2,
@@ -309,13 +359,12 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
 
   const draw = useCallback((ts: number) => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas || !isVisible) return // CORREÇÃO 10: Pausa quando não visível
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
     const t = ts / 1000
     
-    // Sincroniza tamanho do canvas com o pai
     const parent = canvas.parentElement
     if (parent) {
       const pr = parent.getBoundingClientRect()
@@ -327,19 +376,7 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
 
     const centers = getCenters()
     
-    // Só desenha se tiver pelo menos 2 cards visíveis
-    if (centers.length >= 2) {
-      const key = centers.map(c => `${Math.round(c.x)},${Math.round(c.y)}`).join("|")
-      if (key !== lastLayoutRef.current) {
-        lastLayoutRef.current = key
-        splineRef.current = buildSpline(centers, 140)
-      }
-    }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    
-    // Se não tiver spline ou não estiver ready, não desenha nada
-    if (!isReady || splineRef.current.length < 2) {
+    if (centers.length < 2 || splineRef.current.length < 2) {
       return
     }
     
@@ -347,8 +384,10 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
     const n = pts.length
     const isActive = activeIndex !== null
 
-    // ── Outermost atmospheric glow ──
     ctx.save()
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
+    // ── Outermost atmospheric glow ──
     ctx.beginPath()
     ctx.moveTo(pts[0].x, pts[0].y)
     for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y)
@@ -390,7 +429,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       const g = Math.round(58  + (70  - 58)  * prog)
       const b = Math.round(237 + (239 - 237) * prog)
 
-      // Deep shadow layer
       ctx.beginPath()
       ctx.moveTo(p.x, p.y + 2.5)
       ctx.lineTo(q.x, q.y + 2.5)
@@ -399,7 +437,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       ctx.lineCap = "round"
       ctx.stroke()
 
-      // Mid-tone shadow
       ctx.beginPath()
       ctx.moveTo(p.x, p.y + 1)
       ctx.lineTo(q.x, q.y + 1)
@@ -407,7 +444,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       ctx.lineWidth = thick + 1.5
       ctx.stroke()
 
-      // Main body
       ctx.beginPath()
       ctx.moveTo(p.x, p.y)
       ctx.lineTo(q.x, q.y)
@@ -415,7 +451,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       ctx.lineWidth = thick
       ctx.stroke()
 
-      // Upper specular highlight
       ctx.beginPath()
       ctx.moveTo(p.x, p.y - thick * 0.22)
       ctx.lineTo(q.x, q.y - thick * 0.22)
@@ -423,7 +458,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       ctx.lineWidth = thick * 0.28
       ctx.stroke()
 
-      // Top bright highlight
       ctx.beginPath()
       ctx.moveTo(p.x, p.y - thick * 0.3)
       ctx.lineTo(q.x, q.y - thick * 0.3)
@@ -447,7 +481,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       ctx.beginPath()
       ctx.arc(pt.x, pt.y, pulse.size * 5, 0, Math.PI * 2)
       ctx.fillStyle = cr1
-      ctx.globalAlpha = 0.9
       ctx.fill()
 
       const cr2 = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pulse.size * 2)
@@ -457,13 +490,11 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       ctx.beginPath()
       ctx.arc(pt.x, pt.y, pulse.size * 2, 0, Math.PI * 2)
       ctx.fillStyle = cr2
-      ctx.globalAlpha = 1
       ctx.fill()
 
       ctx.beginPath()
       ctx.arc(pt.x, pt.y, pulse.size * 0.5, 0, Math.PI * 2)
       ctx.fillStyle = `rgba(255,248,255,${pulse.alpha})`
-      ctx.globalAlpha = 1
       ctx.fill()
     })
 
@@ -481,7 +512,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
         ctx.arc(pt.x, pt.y, 26 + 4 * Math.sin(t * 3), 0, Math.PI * 2)
         ctx.strokeStyle = `rgba(${r},${g},${b},0.2)`
         ctx.lineWidth = 1
-        ctx.globalAlpha = 1
         ctx.stroke()
       }
 
@@ -489,7 +519,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       ctx.arc(pt.x, pt.y, (isHovered ? 18 : 14) * nodePulse, 0, Math.PI * 2)
       ctx.strokeStyle = `rgba(${r},${g},${b},${isHovered ? 0.5 : 0.28})`
       ctx.lineWidth = isHovered ? 1.5 : 1
-      ctx.globalAlpha = 1
       ctx.stroke()
 
       const ng = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, isHovered ? 20 : 16)
@@ -512,9 +541,48 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
     })
 
     ctx.restore()
-  }, [getCenters, activeIndex, isReady])
+  }, [getCenters, activeIndex, isVisible])
 
-  // CORREÇÃO: ÚNICO loop de animação
+  // CORREÇÃO 5: Rebuild spline em resize e scroll
+  useEffect(() => {
+    if (!isReady) return
+    
+    const handleRebuild = () => {
+      if (rebuildTimeoutRef.current) clearTimeout(rebuildTimeoutRef.current)
+      rebuildTimeoutRef.current = window.setTimeout(rebuildSpline, 100)
+    }
+    
+    window.addEventListener("resize", handleRebuild)
+    window.addEventListener("scroll", handleRebuild)
+    
+    rebuildSpline()
+    
+    return () => {
+      window.removeEventListener("resize", handleRebuild)
+      window.removeEventListener("scroll", handleRebuild)
+      if (rebuildTimeoutRef.current) clearTimeout(rebuildTimeoutRef.current)
+    }
+  }, [isReady, rebuildSpline])
+
+  // CORREÇÃO 10: Visibilidade da seção
+  useEffect(() => {
+    const section = document.getElementById("journey")
+    if (!section) return
+    
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting)
+      },
+      { threshold: 0.1 }
+    )
+    
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [])
+
+  // CORREÇÃO 6: StrictMode prevention
+  const startedRef = useRef(false)
+  
   const drawRef = useRef(draw)
   
   useEffect(() => {
@@ -522,6 +590,9 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
   }, [draw])
 
   useEffect(() => {
+    if (startedRef.current) return
+    startedRef.current = true
+
     let frame: number
     let mounted = true
 
@@ -537,7 +608,7 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
       mounted = false
       cancelAnimationFrame(frame)
     }
-  }, []) // Array vazio - executa apenas uma vez
+  }, [])
 
   return (
     <canvas
@@ -569,9 +640,11 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
   const my = useMotionValue(0)
   const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [8, -8]), { stiffness: 300, damping: 30 })
   const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-8, 8]), { stiffness: 300, damping: 30 })
-  const shine = useTransform(
-    [mx, my] as any,
-    ([lx, ly]: number[]) =>
+  
+  // CORREÇÃO 7: Tipagem correta do useTransform
+  const shine = useTransform<[number, number], string>(
+    [mx, my],
+    ([lx, ly]) =>
       `radial-gradient(ellipse at ${(lx + 0.5) * 100}% ${(ly + 0.5) * 100}%, ${rgba(milestone.accentColor, 0.18)} 0%, transparent 60%)`
   )
 
@@ -866,7 +939,6 @@ export function JourneySection() {
   const [visibleCount, setVisibleCount] = useState(0)
   const visibleIds = useRef(new Set<string>())
 
-  // CORREÇÃO: Refs independentes para desktop e mobile
   const desktopRefs = useRef<React.RefObject<HTMLDivElement | null>[]>(
     Array.from({ length: MILESTONES.length }, () =>
       React.createRef<HTMLDivElement | null>()
@@ -889,8 +961,8 @@ export function JourneySection() {
     setVisibleCount(visibleIds.current.size)
   }, [])
 
-  // Só ativa a trilha quando todos os cards estiverem visíveis
-  const isTrailReady = visibleCount === MILESTONES.length
+  // CORREÇÃO 1: Ativa trilha com apenas 2 cards visíveis
+  const isTrailReady = visibleCount >= 2
 
   const colLeft  = MILESTONES.filter(m => m.col === 0)
   const colRight = MILESTONES.filter(m => m.col === 1)
@@ -936,44 +1008,38 @@ export function JourneySection() {
 
         <div className="hidden lg:grid lg:grid-cols-2 lg:gap-7 xl:gap-10">
           <div>
-            {colLeft.map(m => {
-              const idx = MILESTONES.findIndex(x => x.id === m.id)
-              return (
-                <JourneyCard
-                  key={`desktop-${m.id}`}
-                  milestone={m}
-                  index={idx}
-                  cardId={m.id}
-                  cardRef={desktopRefs[idx]}
-                  onHoverChange={handleHoverChange}
-                  onVisible={handleCardVisible}
-                />
-              )
-            })}
+            {colLeft.map((m, idx) => (
+              <JourneyCard
+                key={`${m.id}-${idx}`}
+                milestone={m}
+                index={MILESTONES.findIndex(x => x.id === m.id)}
+                cardId={m.id}
+                cardRef={desktopRefs[MILESTONES.findIndex(x => x.id === m.id)]}
+                onHoverChange={handleHoverChange}
+                onVisible={handleCardVisible}
+              />
+            ))}
           </div>
 
           <div className="mt-16">
-            {colRight.map(m => {
-              const idx = MILESTONES.findIndex(x => x.id === m.id)
-              return (
-                <JourneyCard
-                  key={`desktop-${m.id}`}
-                  milestone={m}
-                  index={idx}
-                  cardId={m.id}
-                  cardRef={desktopRefs[idx]}
-                  onHoverChange={handleHoverChange}
-                  onVisible={handleCardVisible}
-                />
-              )
-            })}
+            {colRight.map((m, idx) => (
+              <JourneyCard
+                key={`${m.id}-${idx}`}
+                milestone={m}
+                index={MILESTONES.findIndex(x => x.id === m.id)}
+                cardId={m.id}
+                cardRef={desktopRefs[MILESTONES.findIndex(x => x.id === m.id)]}
+                onHoverChange={handleHoverChange}
+                onVisible={handleCardVisible}
+              />
+            ))}
           </div>
         </div>
 
         <div className="lg:hidden space-y-5">
           {MILESTONES.map((m, i) => (
             <JourneyCard
-              key={`mobile-${m.id}`}
+              key={`mobile-${m.id}-${i}`}
               milestone={m}
               index={i}
               cardId={m.id}
