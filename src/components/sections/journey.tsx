@@ -1,27 +1,8 @@
 "use client"
 
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  memo,
-} from "react"
-import {
-  motion,
-  useSpring,
-  useTransform,
-  useMotionValue,
-  MotionValue,
-} from "framer-motion"
-import {
-  GraduationCap,
-  Code2,
-  Briefcase,
-  type LucideIcon,
-} from "lucide-react"
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import React, { useEffect, useRef, useState, useCallback, memo } from "react"
+import { motion, useSpring, useTransform, useMotionValue } from "framer-motion"
+import { GraduationCap, Code2, Briefcase, type LucideIcon } from "lucide-react"
 
 interface Milestone {
   id: string
@@ -62,17 +43,15 @@ interface Vec2 {
   y: number
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
 const MILESTONES: Milestone[] = [
   {
-    id: "formation",
+    id: "start",
     number: "01",
-    title: "Formação & Fundamentos",
-    period: "2020 – 2021",
+    title: "Primeiros Passos na Programação",
+    period: "2025",
     description:
-      "Início da jornada no desenvolvimento web. Lógica de programação, HTML, CSS e os primeiros passos com JavaScript para criar interatividade real nas interfaces.",
-    achievements: ["Primeiro site publicado", "Projeto de conclusão de curso"],
+      "Início da trajetória no desenvolvimento web através do curso Técnico em Informática para Internet. Aprendizado dos fundamentos da programação, estruturação de páginas e construção das primeiras interfaces responsivas.",
+    achievements: ["Primeiros projetos publicados", "Domínio dos fundamentos web"],
     technologies: ["HTML5", "CSS3", "JavaScript", "Git"],
     icon: GraduationCap,
     color: "#7C3AED",
@@ -80,64 +59,62 @@ const MILESTONES: Milestone[] = [
     col: 0,
   },
   {
-    id: "first-projects",
+    id: "academic-projects",
     number: "02",
-    title: "Primeiros Projetos",
-    period: "2021 – 2022",
+    title: "Projetos Acadêmicos & Desafios",
+    period: "2025",
     description:
-      "Projetos reais que consolidaram a base técnica. Interfaces responsivas, integração com APIs e controle de versão. Cada entrega foi um degrau importante na evolução.",
-    achievements: ["5+ projetos entregues", "Primeiro cliente real"],
-    technologies: ["React", "Sass", "REST API", "GitHub"],
+      "Participação ativa em projetos desenvolvidos no IFSP, aplicando conceitos de desenvolvimento web, trabalho em equipe e resolução de problemas reais através da prática.",
+    achievements: ["Projetos colaborativos no IFSP", "Experiência em desenvolvimento em equipe"],
+    technologies: ["JavaScript", "GitHub", "Figma", "Responsive Design"],
     icon: Code2,
     color: "#9333EA",
     accentColor: "#A855F7",
     col: 1,
   },
   {
-    id: "specialization",
+    id: "hackathons",
     number: "03",
-    title: "Especialização Front-End",
-    period: "2022 – 2023",
+    title: "Hackathons & Inovação",
+    period: "2025 – 2026",
     description:
-      "Aprofundamento em bibliotecas modernas e arquitetura de interfaces escaláveis. TypeScript, Tailwind CSS e Next.js se tornaram ferramentas do dia a dia.",
-    achievements: ["Certificação React", "Contribuição Open Source"],
-    technologies: ["TypeScript", "Tailwind CSS", "Next.js", "Framer Motion"],
+      "Participação em hackathons, eventos de tecnologia e desafios de inovação, desenvolvendo soluções sob pressão, colaborando com diferentes equipes e ampliando a visão sobre o mercado tech.",
+    achievements: ["Participação em hackathons", "Networking com estudantes e profissionais"],
+    technologies: ["React", "APIs", "Prototipação", "Problem Solving"],
     icon: Code2,
     color: "#A855F7",
     accentColor: "#C084FC",
     col: 0,
   },
   {
-    id: "professional",
+    id: "portfolio",
     number: "04",
-    title: "Experiência Profissional",
-    period: "2023 – 2024",
+    title: "Projetos Independentes",
+    period: "2026",
     description:
-      "Atuação em projetos reais no mercado, colaborando com equipes multidisciplinares e entregando soluções de alto impacto com metodologias ágeis e CI/CD.",
-    achievements: ["3 projetos em produção", "Mentoria de júnior"],
-    technologies: ["Next.js", "Node.js", "Figma", "Jest"],
+      "Desenvolvimento contínuo de projetos pessoais e freelances experimentais para aprofundar conhecimentos em interfaces modernas, animações avançadas e experiências digitais diferenciadas.",
+    achievements: ["Portfólio em constante evolução", "Projetos autorais publicados"],
+    technologies: ["Next.js", "TypeScript", "Tailwind CSS", "Framer Motion"],
     icon: Briefcase,
     color: "#C026D3",
     accentColor: "#E879F9",
     col: 1,
   },
   {
-    id: "impact",
+    id: "future",
     number: "05",
-    title: "Impacto & Evolução Contínua",
-    period: "Atualmente",
+    title: "Formação Técnica & Próximos Desafios",
+    period: "2026",
     description:
-      "Soluções completas com foco em performance, acessibilidade e experiências memoráveis. Interfaces que encantam usuários e resolvem problemas reais.",
-    achievements: ["200k+ usuários impactados", "Feature premiada"],
-    technologies: ["UI/UX Design", "Performance", "A11y", "SEO"],
-    icon: Code2,
+      "Conclusão do curso Técnico em Informática para Internet, consolidando conhecimentos em desenvolvimento web e seguindo em constante evolução através de novos projetos, estudos e experiências práticas.",
+    achievements: ["Conclusão da formação técnica", "Evolução contínua como desenvolvedora Front-End"],
+    technologies: ["Next.js", "UI Design", "Performance", "Acessibilidade"],
+    icon: GraduationCap,
     color: "#D946EF",
     accentColor: "#F0ABFC",
     col: 0,
   },
 ]
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function rgba(hex: string, a: number): string {
   const n = parseInt(hex.replace("#", ""), 16)
@@ -145,10 +122,21 @@ function rgba(hex: string, a: number): string {
 }
 
 function catmull(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Vec2 {
-  const t2 = t * t, t3 = t2 * t
+  const t2 = t * t
+  const t3 = t2 * t
   return {
-    x: 0.5 * (2*p1.x + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
-    y: 0.5 * (2*p1.y + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
+    x:
+      0.5 *
+      (2 * p1.x +
+        (-p0.x + p2.x) * t +
+        (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+        (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+    y:
+      0.5 *
+      (2 * p1.y +
+        (-p0.y + p2.y) * t +
+        (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+        (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
   }
 }
 
@@ -158,13 +146,11 @@ function buildSpline(pts: Vec2[], steps = 120): Vec2[] {
   const ext = [pts[0], ...pts, pts[pts.length - 1]]
   for (let i = 1; i < ext.length - 2; i++) {
     for (let s = 0; s <= steps; s++) {
-      out.push(catmull(ext[i-1], ext[i], ext[i+1], ext[i+2], s / steps))
+      out.push(catmull(ext[i - 1], ext[i], ext[i + 1], ext[i + 2], s / steps))
     }
   }
   return out
 }
-
-// ─── Background Canvas ────────────────────────────────────────────────────────
 
 const BackgroundCanvas = memo(function BackgroundCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -178,7 +164,6 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // CORREÇÃO 3: Inicializa partículas apenas uma vez
     if (!initializedRef.current) {
       initializedRef.current = true
       particlesRef.current = Array.from({ length: 70 }, () => ({
@@ -200,9 +185,8 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
       canvas.height = canvas.offsetHeight
       const W = canvas.width
       const H = canvas.height
-      
-      // CORREÇÃO 3: Ajusta partículas existentes ao invés de recriar
-      particlesRef.current.forEach(p => {
+
+      particlesRef.current.forEach((p) => {
         p.x = Math.min(p.x, W)
         p.y = Math.min(p.y, H)
       })
@@ -221,7 +205,6 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
       }
 
       ctx.clearRect(0, 0, W, H)
-
       ctx.fillStyle = "#050311"
       ctx.fillRect(0, 0, W, H)
 
@@ -242,23 +225,28 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
       ctx.lineWidth = 0.5
       const gs = 56
       for (let x = 0; x < W; x += gs) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, H)
+        ctx.stroke()
       }
       for (let y = 0; y < H; y += gs) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(W, y)
+        ctx.stroke()
       }
 
-      // CORREÇÃO 4: Otimização de performance - usar fill simples ao invés de gradient
-      particles.forEach(p => {
+      particles.forEach((p) => {
         p.x = (p.x + p.vx + W) % W
         p.y = (p.y + p.vy + H) % H
         const alpha = p.a * (0.4 + 0.6 * Math.sin(t * p.spd * 60 + p.phase))
-        
+
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(${p.col},${alpha + 0.04})`
         ctx.fill()
-        
+
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(${p.col},${alpha + 0.15})`
@@ -270,12 +258,11 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
 
     resize()
     rafRef.current = requestAnimationFrame(draw)
-    
-    // CORREÇÃO 2: Observa o pai ao invés do próprio canvas
+
     const ro = new ResizeObserver(resize)
     if (canvas.parentElement) ro.observe(canvas.parentElement)
-    
-    return () => { 
+
+    return () => {
       cancelAnimationFrame(rafRef.current)
       ro.disconnect()
     }
@@ -291,8 +278,6 @@ const BackgroundCanvas = memo(function BackgroundCanvas() {
   )
 })
 
-// ─── Energy Trail Canvas ──────────────────────────────────────────────────────
-
 interface TrailCanvasProps {
   cardRefs: React.RefObject<HTMLDivElement | null>[]
   activeIndex: number | null
@@ -303,18 +288,15 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const splineRef = useRef<Vec2[]>([])
   const pulsesRef = useRef<TrailPulse[]>([
-    { t: 0.05, speed: 0.0022, size: 8,  alpha: 1.0,  hue: 0 },
+    { t: 0.05, speed: 0.0022, size: 8, alpha: 1.0, hue: 0 },
     { t: 0.38, speed: 0.0017, size: 5.5, alpha: 0.75, hue: 30 },
-    { t: 0.62, speed: 0.0025, size: 4,  alpha: 0.55, hue: 60 },
+    { t: 0.62, speed: 0.0025, size: 4, alpha: 0.55, hue: 60 },
     { t: 0.82, speed: 0.0019, size: 3.5, alpha: 0.45, hue: 90 },
   ])
-  
-  // CORREÇÃO 10: Controle de visibilidade para pausar RAF
+
   const [isVisible, setIsVisible] = useState(false)
-  const sectionRef = useRef<HTMLDivElement | null>(null)
   const rebuildTimeoutRef = useRef<number | null>(null)
-  
-  // CORREÇÃO 5: Rebuild spline apenas em eventos específicos
+
   const rebuildSpline = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -357,206 +339,203 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
     return centers
   }, [cardRefs])
 
-  const draw = useCallback((ts: number) => {
-    const canvas = canvasRef.current
-    if (!canvas || !isVisible) return // CORREÇÃO 10: Pausa quando não visível
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+  const draw = useCallback(
+    (ts: number) => {
+      const canvas = canvasRef.current
+      if (!canvas || !isVisible) return
+      const ctx = canvas.getContext("2d")
+      if (!ctx) return
 
-    const t = ts / 1000
-    
-    const parent = canvas.parentElement
-    if (parent) {
-      const pr = parent.getBoundingClientRect()
-      if (canvas.width !== Math.round(pr.width) || canvas.height !== Math.round(pr.height)) {
-        canvas.width = Math.round(pr.width)
-        canvas.height = Math.round(pr.height)
+      const t = ts / 1000
+
+      const parent = canvas.parentElement
+      if (parent) {
+        const pr = parent.getBoundingClientRect()
+        if (canvas.width !== Math.round(pr.width) || canvas.height !== Math.round(pr.height)) {
+          canvas.width = Math.round(pr.width)
+          canvas.height = Math.round(pr.height)
+        }
       }
-    }
 
-    const centers = getCenters()
-    
-    if (centers.length < 2 || splineRef.current.length < 2) {
-      return
-    }
-    
-    const pts = splineRef.current
-    const n = pts.length
-    const isActive = activeIndex !== null
+      const centers = getCenters()
 
-    ctx.save()
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    
-    // ── Outermost atmospheric glow ──
-    ctx.beginPath()
-    ctx.moveTo(pts[0].x, pts[0].y)
-    for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y)
-    const atmoGrad = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[n-1].x, pts[n-1].y)
-    atmoGrad.addColorStop(0,   "rgba(109,40,217,0)")
-    atmoGrad.addColorStop(0.15,"rgba(124,58,237,0.15)")
-    atmoGrad.addColorStop(0.4, "rgba(147,51,234,0.20)")
-    atmoGrad.addColorStop(0.65,"rgba(168,85,247,0.18)")
-    atmoGrad.addColorStop(0.85,"rgba(192,132,252,0.14)")
-    atmoGrad.addColorStop(1,   "rgba(217,70,239,0)")
-    ctx.strokeStyle = atmoGrad
-    ctx.lineWidth = isActive ? 44 : 38
-    ctx.globalAlpha = isActive ? 0.55 : 0.38
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-    ctx.stroke()
+      if (centers.length < 2 || splineRef.current.length < 2) {
+        return
+      }
 
-    // ── Middle glow ──
-    ctx.beginPath()
-    ctx.moveTo(pts[0].x, pts[0].y)
-    for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y)
-    ctx.strokeStyle = atmoGrad
-    ctx.lineWidth = isActive ? 20 : 16
-    ctx.globalAlpha = isActive ? 0.72 : 0.55
-    ctx.stroke()
+      const pts = splineRef.current
+      const n = pts.length
+      const isActive = activeIndex !== null
 
-    // ── 3D tubular body ──
-    ctx.globalAlpha = 1
-    for (let i = 0; i < n - 1; i += 1) {
-      const p = pts[i]
-      const q = pts[Math.min(i + 1, n - 1)]
-      const prog = i / n
-
-      const breathe = 1 + 0.12 * Math.sin(i * 0.07 + t * 1.8)
-      const baseThick = isActive ? 7.5 : 6
-      const thick = (baseThick + Math.sin(i * 0.06) * 0.8) * breathe
-
-      const r = Math.round(124 + (217 - 124) * prog)
-      const g = Math.round(58  + (70  - 58)  * prog)
-      const b = Math.round(237 + (239 - 237) * prog)
+      ctx.save()
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       ctx.beginPath()
-      ctx.moveTo(p.x, p.y + 2.5)
-      ctx.lineTo(q.x, q.y + 2.5)
-      ctx.strokeStyle = "rgba(10,0,30,0.7)"
-      ctx.lineWidth = thick + 3.5
+      ctx.moveTo(pts[0].x, pts[0].y)
+      for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y)
+      const atmoGrad = ctx.createLinearGradient(pts[0].x, pts[0].y, pts[n - 1].x, pts[n - 1].y)
+      atmoGrad.addColorStop(0, "rgba(109,40,217,0)")
+      atmoGrad.addColorStop(0.15, "rgba(124,58,237,0.15)")
+      atmoGrad.addColorStop(0.4, "rgba(147,51,234,0.20)")
+      atmoGrad.addColorStop(0.65, "rgba(168,85,247,0.18)")
+      atmoGrad.addColorStop(0.85, "rgba(192,132,252,0.14)")
+      atmoGrad.addColorStop(1, "rgba(217,70,239,0)")
+      ctx.strokeStyle = atmoGrad
+      ctx.lineWidth = isActive ? 44 : 38
+      ctx.globalAlpha = isActive ? 0.55 : 0.38
       ctx.lineCap = "round"
+      ctx.lineJoin = "round"
       ctx.stroke()
 
       ctx.beginPath()
-      ctx.moveTo(p.x, p.y + 1)
-      ctx.lineTo(q.x, q.y + 1)
-      ctx.strokeStyle = "rgba(30,0,60,0.5)"
-      ctx.lineWidth = thick + 1.5
+      ctx.moveTo(pts[0].x, pts[0].y)
+      for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y)
+      ctx.strokeStyle = atmoGrad
+      ctx.lineWidth = isActive ? 20 : 16
+      ctx.globalAlpha = isActive ? 0.72 : 0.55
       ctx.stroke()
 
-      ctx.beginPath()
-      ctx.moveTo(p.x, p.y)
-      ctx.lineTo(q.x, q.y)
-      ctx.strokeStyle = `rgba(${r},${g},${b},${isActive ? 0.95 : 0.85})`
-      ctx.lineWidth = thick
-      ctx.stroke()
+      ctx.globalAlpha = 1
+      for (let i = 0; i < n - 1; i += 1) {
+        const p = pts[i]
+        const q = pts[Math.min(i + 1, n - 1)]
+        const prog = i / n
 
-      ctx.beginPath()
-      ctx.moveTo(p.x, p.y - thick * 0.22)
-      ctx.lineTo(q.x, q.y - thick * 0.22)
-      ctx.strokeStyle = "rgba(200,160,255,0.28)"
-      ctx.lineWidth = thick * 0.28
-      ctx.stroke()
+        const breathe = 1 + 0.12 * Math.sin(i * 0.07 + t * 1.8)
+        const baseThick = isActive ? 7.5 : 6
+        const thick = (baseThick + Math.sin(i * 0.06) * 0.8) * breathe
 
-      ctx.beginPath()
-      ctx.moveTo(p.x, p.y - thick * 0.3)
-      ctx.lineTo(q.x, q.y - thick * 0.3)
-      ctx.strokeStyle = "rgba(255,240,255,0.12)"
-      ctx.lineWidth = thick * 0.12
-      ctx.stroke()
-    }
+        const r = Math.round(124 + (217 - 124) * prog)
+        const g = Math.round(58 + (70 - 58) * prog)
+        const b = Math.round(237 + (239 - 237) * prog)
 
-    // ── Traveling energy pulses ──
-    pulsesRef.current.forEach(pulse => {
-      pulse.t += pulse.speed * (isActive ? 1.55 : 1)
-      if (pulse.t > 1) pulse.t -= 1
-
-      const idx = Math.min(Math.floor(pulse.t * (n - 1)), n - 1)
-      const pt = pts[idx]
-
-      const cr1 = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pulse.size * 5)
-      cr1.addColorStop(0,   `rgba(230,180,255,${pulse.alpha * 0.55})`)
-      cr1.addColorStop(0.4, `rgba(180,100,255,${pulse.alpha * 0.28})`)
-      cr1.addColorStop(1,   "transparent")
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, pulse.size * 5, 0, Math.PI * 2)
-      ctx.fillStyle = cr1
-      ctx.fill()
-
-      const cr2 = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pulse.size * 2)
-      cr2.addColorStop(0,   `rgba(255,220,255,${pulse.alpha})`)
-      cr2.addColorStop(0.5, `rgba(210,140,255,${pulse.alpha * 0.7})`)
-      cr2.addColorStop(1,   "transparent")
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, pulse.size * 2, 0, Math.PI * 2)
-      ctx.fillStyle = cr2
-      ctx.fill()
-
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, pulse.size * 0.5, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(255,248,255,${pulse.alpha})`
-      ctx.fill()
-    })
-
-    // ── Node connectors at each card center ──
-    centers.forEach((pt, i) => {
-      const prog = i / Math.max(centers.length - 1, 1)
-      const isHovered = activeIndex === i
-      const nodePulse = 0.65 + 0.35 * Math.sin(t * 1.6 + i * 1.4)
-      const r = Math.round(124 + (217 - 124) * prog)
-      const g = Math.round(58  + (70  - 58)  * prog)
-      const b = Math.round(237 + (239 - 237) * prog)
-
-      if (isHovered) {
         ctx.beginPath()
-        ctx.arc(pt.x, pt.y, 26 + 4 * Math.sin(t * 3), 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(${r},${g},${b},0.2)`
-        ctx.lineWidth = 1
+        ctx.moveTo(p.x, p.y + 2.5)
+        ctx.lineTo(q.x, q.y + 2.5)
+        ctx.strokeStyle = "rgba(10,0,30,0.7)"
+        ctx.lineWidth = thick + 3.5
+        ctx.lineCap = "round"
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.moveTo(p.x, p.y + 1)
+        ctx.lineTo(q.x, q.y + 1)
+        ctx.strokeStyle = "rgba(30,0,60,0.5)"
+        ctx.lineWidth = thick + 1.5
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.moveTo(p.x, p.y)
+        ctx.lineTo(q.x, q.y)
+        ctx.strokeStyle = `rgba(${r},${g},${b},${isActive ? 0.95 : 0.85})`
+        ctx.lineWidth = thick
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.moveTo(p.x, p.y - thick * 0.22)
+        ctx.lineTo(q.x, q.y - thick * 0.22)
+        ctx.strokeStyle = "rgba(200,160,255,0.28)"
+        ctx.lineWidth = thick * 0.28
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.moveTo(p.x, p.y - thick * 0.3)
+        ctx.lineTo(q.x, q.y - thick * 0.3)
+        ctx.strokeStyle = "rgba(255,240,255,0.12)"
+        ctx.lineWidth = thick * 0.12
         ctx.stroke()
       }
 
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, (isHovered ? 18 : 14) * nodePulse, 0, Math.PI * 2)
-      ctx.strokeStyle = `rgba(${r},${g},${b},${isHovered ? 0.5 : 0.28})`
-      ctx.lineWidth = isHovered ? 1.5 : 1
-      ctx.stroke()
+      pulsesRef.current.forEach((pulse) => {
+        pulse.t += pulse.speed * (isActive ? 1.55 : 1)
+        if (pulse.t > 1) pulse.t -= 1
 
-      const ng = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, isHovered ? 20 : 16)
-      ng.addColorStop(0, `rgba(${r},${g},${b},${isHovered ? 0.65 : 0.45})`)
-      ng.addColorStop(1, "transparent")
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, isHovered ? 20 : 16, 0, Math.PI * 2)
-      ctx.fillStyle = ng
-      ctx.fill()
+        const idx = Math.min(Math.floor(pulse.t * (n - 1)), n - 1)
+        const pt = pts[idx]
 
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, isHovered ? 7 : 5.5, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(${r},${g},${b},1)`
-      ctx.fill()
+        const cr1 = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pulse.size * 5)
+        cr1.addColorStop(0, `rgba(230,180,255,${pulse.alpha * 0.55})`)
+        cr1.addColorStop(0.4, `rgba(180,100,255,${pulse.alpha * 0.28})`)
+        cr1.addColorStop(1, "transparent")
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, pulse.size * 5, 0, Math.PI * 2)
+        ctx.fillStyle = cr1
+        ctx.fill()
 
-      ctx.beginPath()
-      ctx.arc(pt.x, pt.y, isHovered ? 3 : 2, 0, Math.PI * 2)
-      ctx.fillStyle = "rgba(255,255,255,0.95)"
-      ctx.fill()
-    })
+        const cr2 = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pulse.size * 2)
+        cr2.addColorStop(0, `rgba(255,220,255,${pulse.alpha})`)
+        cr2.addColorStop(0.5, `rgba(210,140,255,${pulse.alpha * 0.7})`)
+        cr2.addColorStop(1, "transparent")
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, pulse.size * 2, 0, Math.PI * 2)
+        ctx.fillStyle = cr2
+        ctx.fill()
 
-    ctx.restore()
-  }, [getCenters, activeIndex, isVisible])
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, pulse.size * 0.5, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255,248,255,${pulse.alpha})`
+        ctx.fill()
+      })
 
-  // CORREÇÃO 5: Rebuild spline em resize e scroll
+      centers.forEach((pt, i) => {
+        const prog = i / Math.max(centers.length - 1, 1)
+        const isHovered = activeIndex === i
+        const nodePulse = 0.65 + 0.35 * Math.sin(t * 1.6 + i * 1.4)
+        const r = Math.round(124 + (217 - 124) * prog)
+        const g = Math.round(58 + (70 - 58) * prog)
+        const b = Math.round(237 + (239 - 237) * prog)
+
+        if (isHovered) {
+          ctx.beginPath()
+          ctx.arc(pt.x, pt.y, 26 + 4 * Math.sin(t * 3), 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(${r},${g},${b},0.2)`
+          ctx.lineWidth = 1
+          ctx.stroke()
+        }
+
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, (isHovered ? 18 : 14) * nodePulse, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(${r},${g},${b},${isHovered ? 0.5 : 0.28})`
+        ctx.lineWidth = isHovered ? 1.5 : 1
+        ctx.stroke()
+
+        const ng = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, isHovered ? 20 : 16)
+        ng.addColorStop(0, `rgba(${r},${g},${b},${isHovered ? 0.65 : 0.45})`)
+        ng.addColorStop(1, "transparent")
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, isHovered ? 20 : 16, 0, Math.PI * 2)
+        ctx.fillStyle = ng
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, isHovered ? 7 : 5.5, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(${r},${g},${b},1)`
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, isHovered ? 3 : 2, 0, Math.PI * 2)
+        ctx.fillStyle = "rgba(255,255,255,0.95)"
+        ctx.fill()
+      })
+
+      ctx.restore()
+    },
+    [getCenters, activeIndex, isVisible]
+  )
+
   useEffect(() => {
     if (!isReady) return
-    
+
     const handleRebuild = () => {
       if (rebuildTimeoutRef.current) clearTimeout(rebuildTimeoutRef.current)
       rebuildTimeoutRef.current = window.setTimeout(rebuildSpline, 100)
     }
-    
+
     window.addEventListener("resize", handleRebuild)
     window.addEventListener("scroll", handleRebuild)
-    
+
     rebuildSpline()
-    
+
     return () => {
       window.removeEventListener("resize", handleRebuild)
       window.removeEventListener("scroll", handleRebuild)
@@ -564,27 +543,24 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
     }
   }, [isReady, rebuildSpline])
 
-  // CORREÇÃO 10: Visibilidade da seção
   useEffect(() => {
     const section = document.getElementById("journey")
     if (!section) return
-    
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsVisible(entry.isIntersecting)
       },
       { threshold: 0.1 }
     )
-    
+
     observer.observe(section)
     return () => observer.disconnect()
   }, [])
 
-  // CORREÇÃO 6: StrictMode prevention
   const startedRef = useRef(false)
-  
   const drawRef = useRef(draw)
-  
+
   useEffect(() => {
     drawRef.current = draw
   }, [draw])
@@ -620,8 +596,6 @@ const TrailCanvas = memo(function TrailCanvas({ cardRefs, activeIndex, isReady }
   )
 })
 
-// ─── Journey Card ─────────────────────────────────────────────────────────────
-
 interface CardProps {
   milestone: Milestone
   index: number
@@ -631,7 +605,14 @@ interface CardProps {
   onVisible: (id: string) => void
 }
 
-const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRef, onHoverChange, onVisible }: CardProps) {
+const JourneyCard = memo(function JourneyCard({
+  milestone,
+  index,
+  cardId,
+  cardRef,
+  onHoverChange,
+  onVisible,
+}: CardProps) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [hovered, setHovered] = useState(false)
   const visibleRef = useRef(false)
@@ -640,26 +621,25 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
   const my = useMotionValue(0)
   const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [8, -8]), { stiffness: 300, damping: 30 })
   const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-8, 8]), { stiffness: 300, damping: 30 })
-  
- const shine = useTransform(
-  [mx, my],
-  (latest: number[]) => {
-    const [lx, ly] = latest
 
+  const shine = useTransform([mx, my], (latest: number[]) => {
+    const [lx, ly] = latest
     return `radial-gradient(
       ellipse at ${(lx + 0.5) * 100}% ${(ly + 0.5) * 100}%,
       ${rgba(milestone.accentColor, 0.18)} 0%,
       transparent 60%
     )`
-  }
-)
+  })
 
-  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!wrapRef.current) return
-    const r = wrapRef.current.getBoundingClientRect()
-    mx.set((e.clientX - r.left) / r.width - 0.5)
-    my.set((e.clientY - r.top) / r.height - 0.5)
-  }, [mx, my])
+  const onMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!wrapRef.current) return
+      const r = wrapRef.current.getBoundingClientRect()
+      mx.set((e.clientX - r.left) / r.width - 0.5)
+      my.set((e.clientY - r.top) / r.height - 0.5)
+    },
+    [mx, my]
+  )
 
   const onEnter = useCallback(() => {
     setHovered(true)
@@ -667,7 +647,8 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
   }, [index, onHoverChange])
 
   const onLeave = useCallback(() => {
-    mx.set(0); my.set(0)
+    mx.set(0)
+    my.set(0)
     setHovered(false)
     onHoverChange(null)
   }, [mx, my, onHoverChange])
@@ -694,6 +675,7 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
     >
       <div style={{ perspective: 1200 }}>
         <motion.div
+          ref={wrapRef}
           className="relative rounded-2xl overflow-hidden"
           style={{
             rotateX,
@@ -772,11 +754,7 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
                   transition: "box-shadow 0.3s",
                 }}
               >
-                <Icon
-                  className="w-[22px] h-[22px]"
-                  style={{ color: c }}
-                  aria-hidden="true"
-                />
+                <Icon className="w-[22px] h-[22px]" style={{ color: c }} aria-hidden="true" />
               </div>
               <span
                 className="text-[10px] font-mono tracking-widest px-3 py-1.5 rounded-full flex-shrink-0"
@@ -791,17 +769,11 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
               </span>
             </div>
 
-            <p
-              className="text-[10px] font-black tracking-[0.22em] uppercase mb-1.5"
-              style={{ color: rgba(c, 0.8) }}
-            >
+            <p className="text-[10px] font-black tracking-[0.22em] uppercase mb-1.5" style={{ color: rgba(c, 0.8) }}>
               Etapa {milestone.number}
             </p>
 
-            <h3
-              className="text-[17px] font-bold leading-snug mb-3 tracking-tight"
-              style={{ color: "#F4F0FF" }}
-            >
+            <h3 className="text-[17px] font-bold leading-snug mb-3 tracking-tight" style={{ color: "#F4F0FF" }}>
               {milestone.title}
             </h3>
 
@@ -821,10 +793,7 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
                 border: `1px solid ${rgba(c, 0.1)}`,
               }}
             >
-              <p
-                className="text-[10px] font-bold tracking-[0.16em] uppercase mb-2.5"
-                style={{ color: rgba(c, 0.9) }}
-              >
+              <p className="text-[10px] font-bold tracking-[0.16em] uppercase mb-2.5" style={{ color: rgba(c, 0.9) }}>
                 Conquistas
               </p>
               <div className="space-y-1.5">
@@ -834,14 +803,16 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
                       className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                       style={{ background: c, boxShadow: `0 0 6px ${rgba(c, 0.6)}` }}
                     />
-                    <span className="text-[12px]" style={{ color: "#9B9AB8" }}>{a}</span>
+                    <span className="text-[12px]" style={{ color: "#9B9AB8" }}>
+                      {a}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="flex flex-wrap gap-1.5">
-              {milestone.technologies.map(tech => (
+              {milestone.technologies.map((tech) => (
                 <motion.span
                   key={tech}
                   className="text-[11px] font-semibold px-2.5 py-[5px] rounded-full cursor-default"
@@ -868,14 +839,13 @@ const JourneyCard = memo(function JourneyCard({ milestone, index, cardId, cardRe
   )
 })
 
-// ─── Section Header ────────────────────────────────────────────────────────────
-
 const SectionHeader = memo(function SectionHeader() {
   const [isInView, setIsInView] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let mounted = true
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!mounted) return
@@ -903,58 +873,63 @@ const SectionHeader = memo(function SectionHeader() {
       initial={{ opacity: 0, y: 50 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.8 }}
-      className="max-w-3xl mb-12 sm:mb-16 md:mb-20"
+      className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-20 sm:mb-24 md:mb-32"
     >
-      <motion.span
-        initial={{ opacity: 0, x: -20 }}
-        animate={isInView ? { opacity: 1, x: 0 } : {}}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        className="text-xs sm:text-sm text-primary tracking-widest uppercase font-mono mb-3 sm:mb-4 block"
-      >
-        04 / Jornada
-      </motion.span>
+      <div className="max-w-2xl">
+        <motion.span
+          initial={{ opacity: 0, x: -20 }}
+          animate={isInView ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-xs sm:text-sm tracking-widest uppercase font-mono mb-3 sm:mb-4 block"
+          style={{ color: "#A855F7" }}
+        >
+          04 / Jornada
+        </motion.span>
 
-      <motion.h2
-        initial={{ opacity: 0, y: 30 }}
-        animate={isInView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.3 }}
-        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight"
-      >
-        Minha{' '}
-        <span className="text-gradient">trajetória</span>{' '}
-        profissional
-      </motion.h2>
+        <motion.h2
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-4 sm:mb-6"
+          style={{ color: "#F4F0FF" }}
+        >
+          Minha{" "}
+          <span className="text-gradient">trajetória</span>
+            </motion.h2>
+        
+       <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="text-base sm:text-lg leading-relaxed"
+          style={{ color: "#8B8AA8" }}
+        >
+          Uma jornada construída com dedicação, curiosidade e paixão por tecnologia, transformando aprendizado constante
+          em experiências digitais cada vez mais completas.
+        </motion.p>
+      </div>
 
-      <motion.p
-        initial={{ opacity: 0, y: 20 }}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6, delay: 0.4 }}
-        className="text-base sm:text-lg text-muted-foreground mt-4 leading-relaxed"
-      >
-        Uma jornada construída com dedicação, curiosidade e paixão por transformar
-        ideias em experiências digitais memoráveis.
-      </motion.p>
+        transition={{ duration: 0.55, delay: 0.5 }}
+        className="flex gap-2 flex-shrink-0"
+      />
     </motion.div>
   )
 })
 
-// ─── Main Export ──────────────────────────────────────────────────────────────
-
-export function JourneySection() {
+export default function JourneySection() {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [visibleCount, setVisibleCount] = useState(0)
   const visibleIds = useRef(new Set<string>())
 
   const desktopRefs = useRef<React.RefObject<HTMLDivElement | null>[]>(
-    Array.from({ length: MILESTONES.length }, () =>
-      React.createRef<HTMLDivElement | null>()
-    )
+    Array.from({ length: MILESTONES.length }, () => React.createRef<HTMLDivElement | null>())
   ).current
 
   const mobileRefs = useRef<React.RefObject<HTMLDivElement | null>[]>(
-    Array.from({ length: MILESTONES.length }, () =>
-      React.createRef<HTMLDivElement | null>()
-    )
+    Array.from({ length: MILESTONES.length }, () => React.createRef<HTMLDivElement | null>())
   ).current
 
   const handleHoverChange = useCallback((index: number | null) => {
@@ -967,11 +942,10 @@ export function JourneySection() {
     setVisibleCount(visibleIds.current.size)
   }, [])
 
-  // CORREÇÃO 1: Ativa trilha com apenas 2 cards visíveis
   const isTrailReady = visibleCount >= 2
 
-  const colLeft  = MILESTONES.filter(m => m.col === 0)
-  const colRight = MILESTONES.filter(m => m.col === 1)
+  const colLeft = MILESTONES.filter((m) => m.col === 0)
+  const colRight = MILESTONES.filter((m) => m.col === 1)
 
   return (
     <section
@@ -982,11 +956,7 @@ export function JourneySection() {
     >
       <BackgroundCanvas />
 
-      <TrailCanvas
-        cardRefs={desktopRefs}
-        activeIndex={activeIndex}
-        isReady={isTrailReady}
-      />
+      <TrailCanvas cardRefs={desktopRefs} activeIndex={activeIndex} isReady={isTrailReady} />
 
       <div
         aria-hidden="true"
@@ -1006,10 +976,7 @@ export function JourneySection() {
         }}
       />
 
-      <div
-        className="relative container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl"
-        style={{ zIndex: 4 }}
-      >
+      <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl" style={{ zIndex: 4 }}>
         <SectionHeader />
 
         <div className="hidden lg:grid lg:grid-cols-2 lg:gap-7 xl:gap-10">
@@ -1018,9 +985,9 @@ export function JourneySection() {
               <JourneyCard
                 key={`${m.id}-${idx}`}
                 milestone={m}
-                index={MILESTONES.findIndex(x => x.id === m.id)}
+                index={MILESTONES.findIndex((x) => x.id === m.id)}
                 cardId={m.id}
-                cardRef={desktopRefs[MILESTONES.findIndex(x => x.id === m.id)]}
+                cardRef={desktopRefs[MILESTONES.findIndex((x) => x.id === m.id)]}
                 onHoverChange={handleHoverChange}
                 onVisible={handleCardVisible}
               />
@@ -1032,9 +999,9 @@ export function JourneySection() {
               <JourneyCard
                 key={`${m.id}-${idx}`}
                 milestone={m}
-                index={MILESTONES.findIndex(x => x.id === m.id)}
+                index={MILESTONES.findIndex((x) => x.id === m.id)}
                 cardId={m.id}
-                cardRef={desktopRefs[MILESTONES.findIndex(x => x.id === m.id)]}
+                cardRef={desktopRefs[MILESTONES.findIndex((x) => x.id === m.id)]}
                 onHoverChange={handleHoverChange}
                 onVisible={handleCardVisible}
               />
@@ -1059,5 +1026,3 @@ export function JourneySection() {
     </section>
   )
 }
-
-export default JourneySection

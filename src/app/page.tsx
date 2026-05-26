@@ -8,7 +8,9 @@ import { SkillsSection } from '@/components/sections/skills'
 import { AboutSection } from '@/components/sections/about'
 import { ProjectsSection } from '@/components/sections/projects'
 import { HorizontalShowcase } from '@/components/sections/horizontal-showcase'
-import { JourneySection } from '@/components/sections/journey'
+import JourneySection  from '@/components/sections/journey'
+import ContactSection from '@/components/sections/contact'
+import { Footer } from '@/components/sections/footer'
 export default function Home() {
   return (
     <>
@@ -41,7 +43,13 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="relative z-10">
-        {/* Hero Section */}
+
+
+        {/* Contact Section */}
+        <ContactSection />
+
+         {/* Footer */}
+        <Footer />
       </main>
     </>
   )

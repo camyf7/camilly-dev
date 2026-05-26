@@ -68,12 +68,44 @@ const BOOT_SEQUENCE = [
   '[  OK  ] Tailwind CSS 3.4 ativo',
 ]
 
+// ─── useWindowSize hook ───────────────────────────────────────────────────────
+function useWindowWidth() {
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const update = () => setWidth(window.innerWidth)
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+  return width
+}
+
 // ─── Notebook3D ───────────────────────────────────────────────────────────────
 function Notebook3D() {
   const laptopRef = useRef<HTMLDivElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
+  const windowWidth = useWindowWidth()
 
-  // 3D rotation — apenas drag, sem auto-rotate
+  // Notebook base dimensions — scale down on small screens
+  const BASE_W = 440
+  const BASE_H_LID = 270
+  const BASE_H_BASE = 150
+  const BASE_H_TOTAL = 420
+
+  const scale = windowWidth === 0 ? 1
+    : windowWidth < 360  ? 0.50
+    : windowWidth < 480  ? 0.60
+    : windowWidth < 640  ? 0.72
+    : windowWidth < 768  ? 0.85
+    : 1
+
+  const scaledW   = BASE_W * scale
+  const scaledH   = BASE_H_TOTAL * scale
+  const marginBottom = windowWidth > 0 && windowWidth < 768
+    ? -(BASE_H_TOTAL * (1 - scale))
+    : 0
+
+  // 3D rotation — drag only
   const rotX = useRef(16)
   const rotY = useRef(-8)
   const isDragging = useRef(false)
@@ -89,27 +121,26 @@ function Notebook3D() {
   const [codeWidths, setCodeWidths] = useState<number[]>(CODE_LINES.map(([,w]) => w))
   const [codeColors, setCodeColors] = useState<string[]>(CODE_LINES.map(([,,c]) => c))
 
-  const phaseRef = useRef<'boot' | 'ask-name' | 'ready'>('boot')
-  const promptRef = useRef('')
-  const isTyping = useRef(false)
-  const phraseIdx = useRef(0)
+  const phaseRef   = useRef<'boot' | 'ask-name' | 'ready'>('boot')
+  const promptRef  = useRef('')
+  const isTyping   = useRef(false)
+  const phraseIdx  = useRef(0)
 
   useEffect(() => { phaseRef.current = phase }, [phase])
   useEffect(() => { promptRef.current = promptInput }, [promptInput])
 
-  // ── Apply transform ──────────────────────────────────────────────────────
+  // ── Apply transform ────────────────────────────────────────────────────────
   const applyTransform = useCallback(() => {
     if (laptopRef.current)
       laptopRef.current.style.transform =
         `rotateX(${rotX.current}deg) rotateY(${rotY.current}deg)`
   }, [])
 
-  // ── Drag handlers ────────────────────────────────────────────────────────
+  // ── Drag handlers ──────────────────────────────────────────────────────────
   const startDrag = (x: number, y: number) => {
     isDragging.current = true
     lastPos.current = { x, y }
   }
-
   const moveDrag = (x: number, y: number) => {
     if (!isDragging.current) return
     rotY.current = rotY.current + (x - lastPos.current.x) * 0.55
@@ -117,12 +148,9 @@ function Notebook3D() {
     lastPos.current = { x, y }
     applyTransform()
   }
+  const endDrag = () => { isDragging.current = false }
 
-  const endDrag = () => {
-    isDragging.current = false
-  }
-
-  // ── Boot ─────────────────────────────────────────────────────────────────
+  // ── Boot ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     let i = 0
     const next = () => {
@@ -139,7 +167,7 @@ function Notebook3D() {
     setTimeout(next, 500)
   }, [])
 
-  // ── Submit name ───────────────────────────────────────────────────────────
+  // ── Submit name ────────────────────────────────────────────────────────────
   const handleNameSubmit = useCallback(() => {
     const name = promptRef.current.trim() || 'visitante'
     setUserName(name)
@@ -154,7 +182,7 @@ function Notebook3D() {
     ])
   }, [])
 
-  // ── Typing animation ──────────────────────────────────────────────────────
+  // ── Typing animation ───────────────────────────────────────────────────────
   const startTyping = useCallback(() => {
     if (isTyping.current) return
     isTyping.current = true
@@ -168,7 +196,7 @@ function Notebook3D() {
     tick()
   }, [])
 
-  // ── Core key action ───────────────────────────────────────────────────────
+  // ── Core key action ────────────────────────────────────────────────────────
   const handleKeyAction = useCallback((label: string) => {
     setPressedKey(label)
     setTimeout(() => setPressedKey(p => p === label ? null : p), 150)
@@ -203,7 +231,7 @@ function Notebook3D() {
     setTermLines(p => [...p.slice(-6), cmds[Math.floor(Math.random() * cmds.length)]])
   }, [handleNameSubmit, startTyping])
 
-  // ── Physical keyboard ─────────────────────────────────────────────────────
+  // ── Physical keyboard ──────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (document.activeElement === mobileInputRef.current) return
@@ -220,7 +248,7 @@ function Notebook3D() {
     return () => window.removeEventListener('keydown', onKey)
   }, [handleNameSubmit, handleKeyAction])
 
-  // ── Key component ─────────────────────────────────────────────────────────
+  // ── Key component ──────────────────────────────────────────────────────────
   const Key = ({ label, w }: { label: string; w: number }) => {
     const active = pressedKey === label && label !== ''
     return (
@@ -238,7 +266,7 @@ function Notebook3D() {
           border: '0.5px solid rgba(168,85,247,0.1)',
           cursor: label ? 'pointer' : 'default',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 'clamp(3px, 1.2vw, 5px)',
+          fontSize: `${Math.max(3, 5 * scale)}px`,
           color: 'rgba(200,180,255,0.45)', fontFamily: 'monospace',
           userSelect: 'none', WebkitUserSelect: 'none',
           transform: active ? 'scaleY(0.72)' : 'scaleY(1)',
@@ -254,7 +282,10 @@ function Notebook3D() {
   }
 
   return (
-    <div className="relative w-full flex flex-col items-center select-none px-2 sm:px-4" style={{ minHeight: 'min(400px, 70vw)' }}>
+    <div
+      className="relative flex flex-col items-center select-none"
+      style={{ width: '100%', paddingLeft: '8px', paddingRight: '8px' }}
+    >
 
       {/* ── Floating tech chips ── */}
       {CHIPS.map((chip, i) => (
@@ -263,22 +294,25 @@ function Notebook3D() {
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1 + i * 0.18, duration: 0.38, ease: [0.23,1,0.32,1] }}
-          className="hidden sm:block"
           style={{
             position: 'absolute',
-            [chip.side === 'left' ? 'left' : 'right']: 'max(-10px, -2%)',
-            top: `${chip.yPct}%`, zIndex: 20, pointerEvents: 'none',
+            [chip.side === 'left' ? 'left' : 'right']: windowWidth < 480 ? '-4px' : '-12px',
+            top: `${chip.yPct}%`,
+            zIndex: 20,
+            pointerEvents: 'none',
+            display: windowWidth > 0 && windowWidth < 360 ? 'none' : 'block',
           }}
         >
           <motion.div
             animate={{ y: [0, -7, 0] }}
             transition={{ duration: 3.2 + i * 0.5, repeat: Infinity, ease: 'easeInOut' }}
-            className="whitespace-nowrap"
             style={{
+              whiteSpace: 'nowrap',
               background: 'rgba(8,6,20,0.9)',
               border: `1px solid ${chip.color}25`,
-              borderRadius: '8px', padding: '4px 10px',
-              fontSize: 'clamp(8px, 2vw, 10px)',
+              borderRadius: '8px',
+              padding: windowWidth < 480 ? '3px 6px' : '4px 10px',
+              fontSize: windowWidth < 480 ? '8px' : '10px',
               fontFamily: 'monospace',
               color: chip.color,
             }}
@@ -288,37 +322,61 @@ function Notebook3D() {
 
       {/* ── 3D scene ── */}
       <div
-        className="w-full flex justify-center"
-        style={{ perspective: '1000px', touchAction: 'none' }}
+        style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          perspective: '1000px',
+          touchAction: 'none',
+        }}
         onMouseDown={e => startDrag(e.clientX, e.clientY)}
         onMouseMove={e => moveDrag(e.clientX, e.clientY)}
         onMouseUp={endDrag}
         onMouseLeave={endDrag}
-        onTouchStart={e => startDrag(e.touches[0].clientX, e.touches[0].clientY)}
-        onTouchMove={e => moveDrag(e.touches[0].clientX, e.touches[0].clientY)}
+        onTouchStart={e => { e.preventDefault(); startDrag(e.touches[0].clientX, e.touches[0].clientY) }}
+        onTouchMove={e => { e.preventDefault(); moveDrag(e.touches[0].clientX, e.touches[0].clientY) }}
         onTouchEnd={endDrag}
       >
-        <div className="notebook-shell w-full max-w-[440px] relative">
-          <div className="notebook-inner w-[440px] h-[420px] transform origin-top-center mx-auto">
+        {/* Scaling wrapper */}
+        <div style={{
+          width: `${scaledW}px`,
+          height: `${scaledH}px`,
+          overflow: 'visible',
+          marginBottom: `${marginBottom}px`,
+          flexShrink: 0,
+        }}>
+          <div style={{
+            width: `${BASE_W}px`,
+            height: `${BASE_H_TOTAL}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top center',
+          }}>
             <div
               ref={laptopRef}
               style={{
-                width: '440px', height: '420px',
-                position: 'relative', transformStyle: 'preserve-3d',
+                width: `${BASE_W}px`,
+                height: `${BASE_H_TOTAL}px`,
+                position: 'relative',
+                transformStyle: 'preserve-3d',
                 transform: `rotateX(${rotX.current}deg) rotateY(${rotY.current}deg)`,
                 cursor: isDragging.current ? 'grabbing' : 'grab',
               }}
             >
               {/* ─── LID ─── */}
               <div style={{
-                width: '440px', height: '270px',
-                position: 'absolute', bottom: '140px', left: 0,
-                transformStyle: 'preserve-3d', transformOrigin: 'bottom center',
+                width: `${BASE_W}px`,
+                height: `${BASE_H_LID}px`,
+                position: 'absolute',
+                bottom: '140px',
+                left: 0,
+                transformStyle: 'preserve-3d',
+                transformOrigin: 'bottom center',
                 transform: 'rotateX(-26deg)',
               }}>
-                {/* ── Face FRONTAL da tampa ── */}
+                {/* ── Front face ── */}
                 <div style={{
-                  width: '440px', height: '270px',
+                  width: `${BASE_W}px`,
+                  height: `${BASE_H_LID}px`,
                   background: 'linear-gradient(155deg,#1e1b32 0%,#0e0c1e 55%,#14112a 100%)',
                   borderRadius: '14px 14px 3px 3px',
                   border: '1px solid rgba(140,100,255,0.16)',
@@ -355,23 +413,38 @@ function Notebook3D() {
                       {['#ff5f57','#febc2e','#28c840'].map((c,i)=>(
                         <div key={i} style={{width:7,height:7,borderRadius:'50%',background:c}}/>
                       ))}
-                      <span style={{fontSize:'clamp(8px, 2.5vw, 10px)',color:'rgba(168,85,247,0.6)',fontFamily:'monospace',marginLeft:'8px'}}>
+                      <span style={{fontSize:'9px',color:'rgba(168,85,247,0.6)',fontFamily:'monospace',marginLeft:'8px'}}>
                         {phase==='boot'?'boot.sh':phase==='ask-name'?'root@camilly ~':`${userName}@camilly ~`}
                       </span>
                     </div>
 
-                    {/* Editor */}
+                    {/* Editor body */}
                     <div style={{flex:1,display:'flex',overflow:'hidden'}}>
-                      <div style={{width:'28px',background:'rgba(0,0,0,0.28)',borderRight:'1px solid rgba(255,255,255,0.04)',display:'flex',flexDirection:'column',alignItems:'center',padding:'8px 0',gap:'7px'}} className="hidden sm:flex">
+                      <div style={{
+                        width:'28px',background:'rgba(0,0,0,0.28)',
+                        borderRight:'1px solid rgba(255,255,255,0.04)',
+                        display:'flex',flexDirection:'column',
+                        alignItems:'center',padding:'8px 0',gap:'7px',
+                      }}>
                         {['⌘','⊞','⊙','⚙'].map((ic,i)=>(
-                          <div key={i} style={{width:'15px',height:'15px',borderRadius:'3px',background:i===0?'rgba(168,85,247,0.4)':'rgba(255,255,255,0.07)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'8px',color:i===0?'#d8a4ff':'rgba(255,255,255,0.3)'}}>{ic}</div>
+                          <div key={i} style={{
+                            width:'15px',height:'15px',borderRadius:'3px',
+                            background:i===0?'rgba(168,85,247,0.4)':'rgba(255,255,255,0.07)',
+                            display:'flex',alignItems:'center',justifyContent:'center',
+                            fontSize:'8px',color:i===0?'#d8a4ff':'rgba(255,255,255,0.3)',
+                          }}>{ic}</div>
                         ))}
                       </div>
                       <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
                         {phase==='ready'&&(
                           <div style={{flex:1,padding:'6px 8px',overflow:'hidden'}}>
                             {CODE_LINES.map(([indent],i)=>(
-                              <div key={i} style={{height:'9px',borderRadius:'2px',marginBottom:'3px',marginLeft:`${indent}px`,width:`${codeWidths[i]}px`,background:codeColors[i],opacity:0.82,transition:'width 0.28s cubic-bezier(0.23,1,0.32,1),background 0.28s'}}/>
+                              <div key={i} style={{
+                                height:'9px',borderRadius:'2px',marginBottom:'3px',
+                                marginLeft:`${indent}px`,width:`${codeWidths[i]}px`,
+                                background:codeColors[i],opacity:0.82,
+                                transition:'width 0.28s cubic-bezier(0.23,1,0.32,1),background 0.28s',
+                              }}/>
                             ))}
                           </div>
                         )}
@@ -381,7 +454,7 @@ function Notebook3D() {
                           padding:'6px 10px',
                           flex:phase!=='ready'?1:'none',
                           height:phase==='ready'?'82px':'auto',
-                          overflow:'hidden',fontFamily:'monospace',fontSize:'clamp(7px, 2vw, 9px)',
+                          overflow:'hidden',fontFamily:'monospace',fontSize:'9px',
                           display:'flex',flexDirection:'column',justifyContent:'flex-end',
                         }}>
                           {termLines.slice(-8).map((line, i) => {
@@ -395,21 +468,29 @@ function Notebook3D() {
                                   : 'rgba(200,200,220,0.7)',
                                 lineHeight: '1.5',
                                 whiteSpace: 'pre-wrap',
-                                fontSize: 'clamp(7px, 2vw, 9px)',
+                                fontSize: '9px',
                               }}>{safeLine}</div>
                             )
                           })}
                           {phase==='ask-name'&&(
                             <div style={{display:'flex',alignItems:'center',gap:'3px',marginTop:'2px'}}>
-                              <span style={{color:'#a855f7',fontSize:'clamp(7px, 2vw, 9px)'}}>{'> '}</span>
-                              <span style={{color:'#e2e8f0',fontSize:'clamp(7px, 2vw, 9px)'}}>{promptInput}</span>
-                              <motion.span animate={{opacity:[1,0,1]}} transition={{duration:0.85,repeat:Infinity}} style={{display:'inline-block',width:'5px',height:'10px',background:'#a855f7',borderRadius:'1px'}}/>
+                              <span style={{color:'#a855f7',fontSize:'9px'}}>{'> '}</span>
+                              <span style={{color:'#e2e8f0',fontSize:'9px'}}>{promptInput}</span>
+                              <motion.span
+                                animate={{opacity:[1,0,1]}}
+                                transition={{duration:0.85,repeat:Infinity}}
+                                style={{display:'inline-block',width:'5px',height:'10px',background:'#a855f7',borderRadius:'1px'}}
+                              />
                             </div>
                           )}
                           {phase==='ready'&&(
-                            <div style={{display:'flex',alignItems:'center',marginTop:'2px',flexWrap:'wrap'}}>
-                              <span style={{color:'#a855f7',fontFamily:'monospace',fontSize:'clamp(7px, 2vw, 9px)'}}>{`${userName}@camilly:~$ `}</span>
-                              <motion.span animate={{opacity:[1,0,1]}} transition={{duration:0.85,repeat:Infinity}} style={{display:'inline-block',width:'5px',height:'10px',background:'#a855f7',borderRadius:'1px',marginLeft:'2px'}}/>
+                            <div style={{display:'flex',alignItems:'center',marginTop:'2px'}}>
+                              <span style={{color:'#a855f7',fontFamily:'monospace',fontSize:'9px'}}>{`${userName}@camilly:~$ `}</span>
+                              <motion.span
+                                animate={{opacity:[1,0,1]}}
+                                transition={{duration:0.85,repeat:Infinity}}
+                                style={{display:'inline-block',width:'5px',height:'10px',background:'#a855f7',borderRadius:'1px',marginLeft:'2px'}}
+                              />
                             </div>
                           )}
                         </div>
@@ -418,66 +499,44 @@ function Notebook3D() {
                   </div>
                 </div>
 
-                {/* ── Face TRASEIRA da tampa — logo LOQ ── */}
+                {/* ── Back face — LOQ logo ── */}
                 <div style={{
-                  width: '440px',
-                  height: '270px',
-                  background: 'linear-gradient(155deg,#0e0c1e 0%,#0a0818 100%)',
-                  borderRadius: '14px 14px 3px 3px',
-                  border: '1px solid rgba(100,80,200,0.1)',
-                  position: 'absolute',
-                  transform: 'rotateY(180deg)',
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                  gap: '10px',
+                  width:`${BASE_W}px`, height:`${BASE_H_LID}px`,
+                  background:'linear-gradient(155deg,#0e0c1e 0%,#0a0818 100%)',
+                  borderRadius:'14px 14px 3px 3px',
+                  border:'1px solid rgba(100,80,200,0.1)',
+                  position:'absolute',
+                  transform:'rotateY(180deg)',
+                  backfaceVisibility:'hidden',
+                  WebkitBackfaceVisibility:'hidden',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  flexDirection:'column', gap:'10px',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {/* L */}
-                    <span style={{
-                      fontSize: '42px', fontFamily: 'monospace', fontWeight: 'bold',
-                      color: 'rgba(168,85,247,0.6)', letterSpacing: '-2px', lineHeight: 1,
-                    }}>L</span>
-                    {/* O */}
-                    <div style={{ position: 'relative', width: '38px', height: '38px' }}>
-                      <div style={{
-                        width: '38px', height: '38px', borderRadius: '50%',
-                        border: '3.5px solid rgba(168,85,247,0.6)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'rgba(168,85,247,0.35)' }}/>
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                    <span style={{ fontSize:'42px', fontFamily:'monospace', fontWeight:'bold', color:'rgba(168,85,247,0.6)', letterSpacing:'-2px', lineHeight:1 }}>L</span>
+                    <div style={{ position:'relative', width:'38px', height:'38px' }}>
+                      <div style={{ width:'38px', height:'38px', borderRadius:'50%', border:'3.5px solid rgba(168,85,247,0.6)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <div style={{ width:'10px', height:'10px', borderRadius:'50%', background:'rgba(168,85,247,0.35)' }}/>
                       </div>
                     </div>
-                    {/* Q */}
-                    <div style={{ position: 'relative', width: '38px', height: '38px' }}>
-                      <div style={{
-                        width: '38px', height: '38px', borderRadius: '50%',
-                        border: '3.5px solid rgba(168,85,247,0.6)',
-                      }}/>
-                      <div style={{
-                        position: 'absolute', bottom: '1px', right: '0px',
-                        width: '13px', height: '3.5px',
-                        background: 'rgba(168,85,247,0.6)', borderRadius: '2px',
-                        transform: 'rotate(45deg)', transformOrigin: 'left center',
-                      }}/>
+                    <div style={{ position:'relative', width:'38px', height:'38px' }}>
+                      <div style={{ width:'38px', height:'38px', borderRadius:'50%', border:'3.5px solid rgba(168,85,247,0.6)' }}/>
+                      <div style={{ position:'absolute', bottom:'1px', right:'0px', width:'13px', height:'3.5px', background:'rgba(168,85,247,0.6)', borderRadius:'2px', transform:'rotate(45deg)', transformOrigin:'left center' }}/>
                     </div>
                   </div>
-                  <div style={{ width: '60px', height: '1px', background: 'rgba(168,85,247,0.25)', borderRadius: '1px' }}/>
+                  <div style={{ width:'60px', height:'1px', background:'rgba(168,85,247,0.25)', borderRadius:'1px' }}/>
                 </div>
               </div>
 
-              {/* ─── BASE FRONTAL — com teclado e trackpad ─── */}
+              {/* ─── BASE FRONTAL ─── */}
               <div style={{
-                width:'440px', height:'150px', position:'absolute', bottom:0, left:0,
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
+                width:`${BASE_W}px`, height:`${BASE_H_BASE}px`,
+                position:'absolute', bottom:0, left:0,
+                backfaceVisibility:'hidden', WebkitBackfaceVisibility:'hidden',
               }}>
                 {/* Keyboard housing */}
                 <div style={{
-                  width:'440px', height:'34px',
+                  width:`${BASE_W}px`, height:'34px',
                   background:'linear-gradient(180deg,#1c1930 0%,#131228 100%)',
                   border:'1px solid rgba(140,100,255,0.13)',
                   borderBottom:'none', borderRadius:'3px 3px 0 0',
@@ -496,23 +555,23 @@ function Notebook3D() {
 
                 {/* Base body */}
                 <div style={{
-                  width:'440px', height:'116px',
+                  width:`${BASE_W}px`, height:'116px',
                   background:'linear-gradient(180deg,#131228 0%,#0d0b1a 100%)',
                   border:'1px solid rgba(120,80,240,0.13)',
                   borderTop:'none', borderRadius:'0 0 10px 10px', position:'relative',
                 }}>
                   {/* Vents */}
-                  <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'clamp(2px, 1vw, 4px)'}}>
+                  <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'4px'}}>
                     {Array.from({length:7}).map((_,i)=>(
-                      <div key={i} style={{width:'clamp(16px, 5vw, 22px)',height:'3px',borderRadius:'1.5px',background:'rgba(100,80,200,0.14)'}}/>
+                      <div key={i} style={{width:'22px',height:'3px',borderRadius:'1.5px',background:'rgba(100,80,200,0.14)'}}/>
                     ))}
                   </div>
                   {/* Trackpad */}
                   <div
                     onPointerDown={e=>{e.preventDefault();e.stopPropagation();handleKeyAction('↵')}}
                     style={{
-                      width:'clamp(80px, 27vw, 120px)', height:'clamp(46px, 16vw, 70px)',
-                      borderRadius:'6px', background:'rgba(255,255,255,0.025)',
+                      width:'120px', height:'70px', borderRadius:'6px',
+                      background:'rgba(255,255,255,0.025)',
                       border:'0.5px solid rgba(168,85,247,0.1)',
                       position:'absolute', bottom:'20px', left:'50%', transform:'translateX(-50%)',
                       cursor:'pointer', touchAction:'none',
@@ -521,43 +580,39 @@ function Notebook3D() {
                   {/* Brand */}
                   <div style={{
                     position:'absolute', bottom:'8px', left:'50%', transform:'translateX(-50%)',
-                    fontSize:'clamp(6px, 2vw, 9px)', color:'rgba(168,85,247,0.28)',
-                    letterSpacing:'clamp(2px, 1vw, 4px)', fontFamily:'monospace', whiteSpace:'nowrap',
+                    fontSize:'9px', color:'rgba(168,85,247,0.28)',
+                    letterSpacing:'4px', fontFamily:'monospace', whiteSpace:'nowrap',
                   }}>CAMILLY</div>
                 </div>
               </div>
 
-              {/* ─── BASE TRASEIRA — corpo limpo sem teclas ─── */}
+              {/* ─── BASE TRASEIRA ─── */}
               <div style={{
-                width:'440px', height:'150px', position:'absolute', bottom:0, left:0,
-                transform: 'rotateY(180deg)',
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
+                width:`${BASE_W}px`, height:`${BASE_H_BASE}px`,
+                position:'absolute', bottom:0, left:0,
+                transform:'rotateY(180deg)',
+                backfaceVisibility:'hidden', WebkitBackfaceVisibility:'hidden',
               }}>
-                {/* Área onde ficaria o teclado — lisa */}
                 <div style={{
-                  width:'440px', height:'34px',
+                  width:`${BASE_W}px`, height:'34px',
                   background:'linear-gradient(180deg,#0e0c1e 0%,#0a0818 100%)',
                   border:'1px solid rgba(100,80,200,0.1)',
                   borderBottom:'none', borderRadius:'3px 3px 0 0',
                 }}/>
-                {/* Base body traseira */}
                 <div style={{
-                  width:'440px', height:'116px',
+                  width:`${BASE_W}px`, height:'116px',
                   background:'linear-gradient(180deg,#0a0818 0%,#080617 100%)',
                   border:'1px solid rgba(100,80,200,0.1)',
                   borderTop:'none', borderRadius:'0 0 10px 10px', position:'relative',
                 }}>
-                  {/* Vents traseiros */}
-                  <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'clamp(2px, 1vw, 4px)'}}>
+                  <div style={{position:'absolute',top:'8px',left:'50%',transform:'translateX(-50%)',display:'flex',gap:'4px'}}>
                     {Array.from({length:7}).map((_,i)=>(
-                      <div key={i} style={{width:'clamp(16px, 5vw, 22px)',height:'3px',borderRadius:'1.5px',background:'rgba(100,80,200,0.08)'}}/>
+                      <div key={i} style={{width:'22px',height:'3px',borderRadius:'1.5px',background:'rgba(100,80,200,0.08)'}}/>
                     ))}
                   </div>
-                  {/* Área do trackpad — lisa, sem interação */}
                   <div style={{
-                    width:'clamp(80px, 27vw, 120px)', height:'clamp(46px, 16vw, 70px)',
-                    borderRadius:'6px', background:'rgba(255,255,255,0.012)',
+                    width:'120px', height:'70px', borderRadius:'6px',
+                    background:'rgba(255,255,255,0.012)',
                     border:'0.5px solid rgba(168,85,247,0.06)',
                     position:'absolute', bottom:'20px', left:'50%', transform:'translateX(-50%)',
                   }}/>
@@ -570,7 +625,13 @@ function Notebook3D() {
       </div>
 
       {/* Ground shadow */}
-      <div style={{width:'min(55%, 280px)',height:'16px',background:'radial-gradient(ellipse at center,rgba(100,60,220,0.18) 0%,transparent 70%)',borderRadius:'50%',marginTop:'2px'}}/>
+      <div style={{
+        width: `${Math.min(0.55 * scaledW, 280)}px`,
+        height:'16px',
+        background:'radial-gradient(ellipse at center,rgba(100,60,220,0.18) 0%,transparent 70%)',
+        borderRadius:'50%',
+        marginTop:'2px',
+      }}/>
 
       {/* Status pill */}
       <motion.div
@@ -579,10 +640,10 @@ function Notebook3D() {
           background:'rgba(8,6,20,0.88)',
           border:'1px solid rgba(168,85,247,0.16)',
           borderRadius:'999px',
-          padding:'clamp(4px, 1.5vw, 6px) clamp(12px, 4vw, 16px)',
+          padding:'6px 16px',
           display:'flex', alignItems:'center',
-          gap:'clamp(4px, 2vw, 8px)',
-          fontSize:'clamp(9px, 3vw, 11px)',
+          gap:'8px',
+          fontSize: windowWidth < 480 ? '9px' : '11px',
           fontFamily:'monospace',
           color:'rgba(255,255,255,0.48)',
           marginTop:'12px',
@@ -592,9 +653,17 @@ function Notebook3D() {
           flexShrink:0,
         }}
       >
-        <motion.span animate={{scale:[1,1.5,1],opacity:[1,0.5,1]}} transition={{duration:2,repeat:Infinity}} style={{width:'clamp(5px, 2vw, 7px)',height:'clamp(5px, 2vw, 7px)',borderRadius:'50%',background:'#4ade80',flexShrink:0,display:'inline-block'}}/>
+        <motion.span
+          animate={{scale:[1,1.5,1],opacity:[1,0.5,1]}}
+          transition={{duration:2,repeat:Infinity}}
+          style={{width:'7px',height:'7px',borderRadius:'50%',background:'#4ade80',flexShrink:0,display:'inline-block'}}
+        />
         <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{typedDisplay}</span>
-        <motion.span animate={{opacity:[1,0,1]}} transition={{duration:0.9,repeat:Infinity}} style={{display:'inline-block',width:'clamp(3px, 1.5vw, 5px)',height:'clamp(8px, 3vw, 11px)',background:'#a855f7',borderRadius:'1px',flexShrink:0}}/>
+        <motion.span
+          animate={{opacity:[1,0,1]}}
+          transition={{duration:0.9,repeat:Infinity}}
+          style={{display:'inline-block',width:'5px',height:'11px',background:'#a855f7',borderRadius:'1px',flexShrink:0}}
+        />
       </motion.div>
 
       {/* Mobile name input */}
@@ -619,28 +688,6 @@ function Notebook3D() {
       <p className="text-xs text-muted-foreground/40 mt-2 font-mono text-center px-2">
         {phase==='ask-name' ? 'clique nas teclas ou use o teclado físico' : 'arraste para girar o notebook'}
       </p>
-
-      <style jsx>{`
-        .notebook-shell { width: 100%; max-width: 440px; position: relative; margin: 0 auto; }
-        .notebook-inner { width: 440px; height: 420px; transform-origin: top center; }
-        @media (max-width: 360px) {
-          .notebook-shell { max-width: 100%; }
-          .notebook-inner { transform: scale(0.52); margin-bottom: -180px; }
-        }
-        @media (min-width: 361px) and (max-width: 479px) {
-          .notebook-shell { max-width: 100%; }
-          .notebook-inner { transform: scale(0.6); margin-bottom: -160px; }
-        }
-        @media (min-width: 480px) and (max-width: 639px) {
-          .notebook-inner { transform: scale(0.72); margin-bottom: -110px; }
-        }
-        @media (min-width: 640px) and (max-width: 767px) {
-          .notebook-inner { transform: scale(0.85); margin-bottom: -60px; }
-        }
-        @media (min-width: 768px) {
-          .notebook-inner { transform: scale(1); margin-bottom: 0; }
-        }
-      `}</style>
     </div>
   )
 }
@@ -670,6 +717,7 @@ export function AboutSection() {
 
   return (
     <section id="about" className="py-16 sm:py-24 md:py-32 lg:py-48 relative overflow-hidden">
+      {/* Background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className="absolute top-1/2 left-0 w-[300px] sm:w-[400px] md:w-[600px] h-[300px] sm:h-[400px] md:h-[600px] bg-accent/5 rounded-full blur-3xl"
@@ -684,6 +732,7 @@ export function AboutSection() {
       </div>
 
       <div ref={containerRef} className="container mx-auto px-4 sm:px-6 relative z-10">
+        {/* Section header */}
         <motion.div
           initial={{opacity:0,y:50}}
           animate={isInView?{opacity:1,y:0}:{}}
@@ -709,23 +758,28 @@ export function AboutSection() {
           </motion.h2>
         </motion.div>
 
+        {/* Main grid */}
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 xl:gap-24 items-center">
+
+          {/* Left — Notebook */}
           <motion.div style={{y:imageY}} className="relative">
             <motion.div
               initial={{opacity:0,scale:0.88}}
               animate={isInView?{opacity:1,scale:1}:{}}
               transition={{duration:0.9,delay:0.2}}
               className="relative rounded-2xl overflow-visible"
-              style={{minHeight:'min(440px, 70vw)'}}
             >
+              {/* Card background */}
               <div className="absolute inset-0 rounded-2xl" style={{
                 background:'linear-gradient(135deg,rgba(124,58,237,0.06) 0%,rgba(10,8,24,0.5) 50%,rgba(6,182,212,0.04) 100%)',
-                border:'1px solid rgba(255,255,255,0.05)'
+                border:'1px solid rgba(255,255,255,0.05)',
               }}/>
               <div className="absolute inset-0 rounded-2xl" style={{
                 backgroundImage:'radial-gradient(rgba(168,85,247,0.1) 1px,transparent 1px)',
-                backgroundSize:'24px 24px'
+                backgroundSize:'24px 24px',
               }}/>
+
+              {/* Fake window bar */}
               <motion.div
                 initial={{opacity:0,y:-10}}
                 animate={isInView?{opacity:1,y:0}:{}}
@@ -735,34 +789,39 @@ export function AboutSection() {
                   background:'rgba(10,8,24,0.92)',
                   border:'1px solid rgba(255,255,255,0.07)',
                   borderRadius:'8px', padding:'4px 8px',
-                  fontFamily:'monospace', fontSize:'clamp(9px, 3vw, 11px)',
+                  fontFamily:'monospace',
+                  fontSize:'clamp(9px, 3vw, 11px)',
                   display:'flex', alignItems:'center', gap:'6px',
                 }}
               >
-                <span style={{color:'#f87171',fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
-                <span style={{color:'#fbbf24',fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
-                <span style={{color:'#4ade80',fontSize:'clamp(6px, 2vw, 8px)'}}>●</span>
+                <span style={{color:'#f87171',fontSize:'8px'}}>●</span>
+                <span style={{color:'#fbbf24',fontSize:'8px'}}>●</span>
+                <span style={{color:'#4ade80',fontSize:'8px'}}>●</span>
                 <span style={{color:'rgba(255,255,255,0.3)',marginLeft:'4px',fontSize:'clamp(8px, 2.5vw, 11px)'}}>camilly.tsx</span>
               </motion.div>
-              <div className="relative z-10 pt-4 sm:pt-5 md:pt-6 px-1 sm:px-3 md:px-4">
+
+              {/* Notebook */}
+              <div className="relative z-10 pt-10 sm:pt-12 md:pt-14 pb-4 sm:pb-6">
                 <Notebook3D />
               </div>
             </motion.div>
 
+            {/* Decorative corners */}
             <motion.div
               initial={{opacity:0,scale:0}}
               animate={isInView?{opacity:1,scale:1}:{}}
               transition={{duration:0.6,delay:0.5}}
-              className="absolute -top-3 sm:-top-4 md:-top-5 -right-3 sm:-right-4 md:-right-5 w-12 sm:w-16 md:w-20 h-12 sm:h-16 md:h-20 border border-primary/20 rounded-xl sm:rounded-2xl pointer-events-none"
+              className="absolute -top-3 sm:-top-4 md:-top-5 -right-3 sm:-right-4 md:-right-5 w-10 sm:w-14 md:w-20 h-10 sm:h-14 md:h-20 border border-primary/20 rounded-xl sm:rounded-2xl pointer-events-none"
             />
             <motion.div
               initial={{opacity:0,scale:0}}
               animate={isInView?{opacity:1,scale:1}:{}}
               transition={{duration:0.6,delay:0.65}}
-              className="absolute -bottom-3 sm:-bottom-4 md:-bottom-5 -left-3 sm:-left-4 md:-left-5 w-16 sm:w-20 md:w-28 h-16 sm:h-20 md:h-28 border border-accent/20 rounded-xl sm:rounded-2xl pointer-events-none"
+              className="absolute -bottom-3 sm:-bottom-4 md:-bottom-5 -left-3 sm:-left-4 md:-left-5 w-12 sm:w-16 md:w-28 h-12 sm:h-16 md:h-28 border border-accent/20 rounded-xl sm:rounded-2xl pointer-events-none"
             />
           </motion.div>
 
+          {/* Right — Text + Stats */}
           <motion.div style={{y:contentY}} className="space-y-6 sm:space-y-7 md:space-y-8">
             <motion.div
               initial={{opacity:0,y:30}}
@@ -791,11 +850,12 @@ export function AboutSection() {
               </p>
             </motion.div>
 
+            {/* Stats */}
             <motion.div
               initial={{opacity:0,y:30}}
               animate={isInView?{opacity:1,y:0}:{}}
               transition={{duration:0.8,delay:0.5}}
-              className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 md:gap-6 pt-6 sm:pt-7 md:pt-8 border-t border-border/30"
+              className="grid grid-cols-2 gap-4 sm:gap-5 md:gap-6 pt-6 sm:pt-7 md:pt-8 border-t border-border/30"
             >
               {stats.map((stat,index)=>(
                 <motion.div
@@ -803,7 +863,7 @@ export function AboutSection() {
                   initial={{opacity:0,y:20}}
                   animate={isInView?{opacity:1,y:0}:{}}
                   transition={{duration:0.5,delay:0.6+index*0.1}}
-                  className="text-center md:text-left"
+                  className="text-center sm:text-left"
                 >
                   <motion.div
                     className="text-2xl sm:text-3xl md:text-4xl font-bold text-gradient"
@@ -818,6 +878,7 @@ export function AboutSection() {
               ))}
             </motion.div>
 
+            {/* IFSP badge */}
             <motion.div
               initial={{opacity:0,y:20}}
               animate={isInView?{opacity:1,y:0}:{}}
